@@ -115,16 +115,16 @@
   .p-pct { font-weight:800; font-size:20px; }
   .chart-card { grid-column: span 12; }
   .chart-wrap { position:relative; height:320px; }
-  .subcards-wrap { grid-column: span 12; display:flex; flex-wrap:wrap; gap:14px; }
-  .subcard { flex:1 1 230px; min-width:230px; background:var(--card-bg); border:1px solid var(--borda); border-radius:14px; padding:14px 16px; }
-  .subcard-title { font-size:11px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--texto-sub); margin-bottom:10px; }
-  .subcard-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .subcards-wrap { grid-column: span 12; display:flex; flex-wrap:wrap; gap:16px; }
+  .subcard { flex:1 1 270px; min-width:270px; background:var(--card-bg); border:1px solid var(--borda); border-radius:16px; padding:18px 20px; }
+  .subcard-title { font-size:13px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--texto-sub); margin-bottom:14px; }
+  .subcard-row { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
   .subcard-row:last-child { margin-bottom:0; }
-  .subcard-avatar { width:22px; height:22px; border-radius:50%; background:var(--cinza-bg); color:var(--texto); font-size:9px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-  .subcard-nome { font-size:12px; font-weight:600; width:96px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex-shrink:0; }
-  .subcard-bar-wrap { flex:1; height:8px; background:var(--cinza-bg); border-radius:999px; overflow:hidden; }
+  .subcard-avatar { width:28px; height:28px; border-radius:50%; background:var(--cinza-bg); color:var(--texto); font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .subcard-nome { font-size:14px; font-weight:600; width:118px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex-shrink:0; }
+  .subcard-bar-wrap { flex:1; height:11px; background:var(--cinza-bg); border-radius:999px; overflow:hidden; }
   .subcard-bar-fill { height:100%; border-radius:999px; }
-  .subcard-pct { font-size:12px; font-weight:800; width:50px; text-align:right; flex-shrink:0; }
+  .subcard-pct { font-size:14px; font-weight:800; width:60px; text-align:right; flex-shrink:0; }
   .footer { grid-column: span 12; font-size:12px; color:var(--texto-sub); text-align:center; margin-top:6px; }
   .empty-msg { padding:44px; text-align:center; color:var(--texto-sub); }
   .theme-toggle {
@@ -581,38 +581,24 @@ async function carregarDados() {
 // de cards termina e só pausa exatamente nessas bordas — cada pausa mostra
 // só cards inteiros. A transição entre páginas é rápida (não é o momento de leitura).
 const PAUSA_PAGINA_MS = 20000;  // quanto tempo fica parado em cada página (tempo de leitura)
-const TRANSICAO_MS = 1400;      // duração do "salto" suave até a próxima página
+const TRANSICAO_MS = 10000;     // duração do "salto" suave até a próxima página
 
 let autoScrollIniciado = false;
 let paginasScroll = [0];
 let paginaAtual = 0;
 let timerProximaPagina = null;
 
+// Páginas fixas por seção (não é mais cálculo automático por altura):
+// Página 1 = topo até os cards Top Closer/Top GC · Página 2 = sub cards de perfil ·
+// Página 3 = os dois gráficos individuais.
 function calcularPaginasScroll() {
   const container = document.getElementById("conteudo");
-  if (!container || !container.children.length) return [0];
-
-  // Agrupa os elementos que estão na mesma linha do grid (mesmo offsetTop) —
-  // isso mantém os dois cards lado a lado (Top Closer / Top GC) juntos na mesma página.
-  const linhas = [];
-  Array.from(container.children).forEach(el => {
-    const topo = el.offsetTop;
-    const base = topo + el.offsetHeight;
-    let linha = linhas.find(l => Math.abs(l.topo - topo) < 2);
-    if (linha) linha.base = Math.max(linha.base, base);
-    else linhas.push({ topo, base });
-  });
-  linhas.sort((a, b) => a.topo - b.topo);
-
-  const alturaTela = window.innerHeight;
+  if (!container) return [0];
+  const subcards = container.querySelector(".subcards-wrap");
+  const primeiroGrafico = container.querySelector(".chart-card");
   const paginas = [0];
-  let inicioPagina = 0;
-  linhas.forEach(linha => {
-    if (linha.base - inicioPagina > alturaTela && linha.topo > inicioPagina) {
-      paginas.push(linha.topo);
-      inicioPagina = linha.topo;
-    }
-  });
+  if (subcards) paginas.push(subcards.offsetTop);
+  if (primeiroGrafico) paginas.push(primeiroGrafico.offsetTop);
   return paginas;
 }
 
