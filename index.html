@@ -6,7 +6,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <style>
-  :root {
+  :root, :root[data-theme="dark"] {
     color-scheme: dark;
     --bg: #0e1015;
     --card-bg: #171a21;
@@ -26,7 +26,31 @@
     --vermelho-bg: rgba(255,107,107,0.14);
     --texto: #f3f4f6;
     --texto-sub: #9aa1ac;
+    --grid-linha: rgba(255,255,255,0.06);
   }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #f5f6f8;
+    --card-bg: #ffffff;
+    --card-bg-2: #f0f1f4;
+    --borda: #e4e6ea;
+    --azul: #1e40af;
+    --azul-bg: #eaf1ff;
+    --dourado: #b8860b;
+    --dourado-bg: #fff7e0;
+    --cinza: #6b7280;
+    --cinza-bg: #eef0f3;
+    --verde: #16a34a;
+    --verde-bg: #ecfdf3;
+    --ambar: #d97706;
+    --ambar-bg: #fff8ec;
+    --vermelho: #dc2626;
+    --vermelho-bg: #fef2f2;
+    --texto: #111827;
+    --texto-sub: #6b7280;
+    --grid-linha: rgba(0,0,0,0.08);
+  }
+  body { transition: background-color .25s ease, color .25s ease; }
   * { box-sizing: border-box; }
   body {
     margin: 0;
@@ -63,7 +87,9 @@
   .chip .tier { font-size:13px; font-weight:700; color:var(--texto-sub); }
   .chip.proximo .tier { color:var(--dourado); }
   .chip .valor { font-size:17px; font-weight:800; margin-top:5px; }
-  .rank-card { grid-column: span 6; }
+  .rank-card { grid-column: span 6; position:relative; overflow:hidden; }
+  .rank-card--destaque { border:1.5px solid var(--dourado); box-shadow: 0 14px 34px rgba(0,0,0,0.28); }
+  .rank-card--destaque::before { content:""; position:absolute; top:0; left:0; right:0; height:4px; background:linear-gradient(90deg, var(--azul), var(--dourado)); }
   .rank-card .card-label .dot { width:9px; height:9px; border-radius:50%; display:inline-block; }
   .dot-azul { background:var(--azul); }
   .dot-dourado { background:var(--dourado); }
@@ -85,8 +111,30 @@
   .p-pct { font-weight:800; font-size:20px; }
   .chart-card { grid-column: span 12; }
   .chart-wrap { position:relative; height:320px; }
+  .subcards-wrap { grid-column: span 12; display:flex; flex-wrap:wrap; gap:14px; }
+  .subcard { flex:1 1 230px; min-width:230px; background:var(--card-bg); border:1px solid var(--borda); border-radius:14px; padding:14px 16px; }
+  .subcard-title { font-size:11px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--texto-sub); margin-bottom:10px; }
+  .subcard-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .subcard-row:last-child { margin-bottom:0; }
+  .subcard-avatar { width:22px; height:22px; border-radius:50%; background:var(--cinza-bg); color:var(--texto); font-size:9px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .subcard-nome { font-size:12px; font-weight:600; width:96px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex-shrink:0; }
+  .subcard-bar-wrap { flex:1; height:8px; background:var(--cinza-bg); border-radius:999px; overflow:hidden; }
+  .subcard-bar-fill { height:100%; border-radius:999px; }
+  .subcard-pct { font-size:12px; font-weight:800; width:50px; text-align:right; flex-shrink:0; }
   .footer { grid-column: span 12; font-size:12px; color:var(--texto-sub); text-align:center; margin-top:6px; }
   .empty-msg { padding:44px; text-align:center; color:var(--texto-sub); }
+  .theme-toggle {
+    margin-top: 8px;
+    border: 1px solid var(--borda);
+    background: var(--card-bg);
+    color: var(--texto);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .theme-toggle:hover { border-color: var(--dourado); }
 </style>
 </head>
 <body>
@@ -100,6 +148,7 @@
     <div class="meta-info">
       <div id="diaLabel"></div>
       <div id="atualizadoLabel">última leitura: —</div>
+      <button class="theme-toggle" id="btnTema" onclick="alternarTema()">☀️ Tema claro</button>
     </div>
   </div>
 
@@ -132,6 +181,12 @@ function toNum(v) {
 }
 function getInitials(nome) {
   return String(nome || "").trim().split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase();
+}
+// Tira o código numérico do início (ex: "072026 SEMANA 4 (JUL)" -> "SEMANA 4 (JUL)")
+function limparSemanaLabel(label) {
+  const s = String(label || "");
+  const idx = s.toUpperCase().indexOf("SEMANA");
+  return idx >= 0 ? s.slice(idx).trim() : s.trim();
 }
 
 function parseDados(payload) {
@@ -206,6 +261,31 @@ function statusCor(status) {
   if (status === "ambar") return getComputedStyle(document.documentElement).getPropertyValue("--ambar").trim();
   return getComputedStyle(document.documentElement).getPropertyValue("--vermelho").trim();
 }
+function corTexto() { return getComputedStyle(document.documentElement).getPropertyValue("--texto").trim(); }
+function corTextoSub() { return getComputedStyle(document.documentElement).getPropertyValue("--texto-sub").trim(); }
+function corGrid() { return getComputedStyle(document.documentElement).getPropertyValue("--grid-linha").trim(); }
+
+// ===== Tema claro/escuro =====
+let ultimoDados = null; // guarda o último payload renderizado, pra poder redesenhar sem rebuscar dados
+
+function aplicarTema(tema) {
+  document.documentElement.setAttribute("data-theme", tema);
+  const btn = document.getElementById("btnTema");
+  if (btn) btn.textContent = tema === "dark" ? "☀️ Tema claro" : "🌙 Tema escuro";
+  try { localStorage.setItem("painelTema", tema); } catch (e) { /* ambiente sem localStorage, segue sem salvar */ }
+  if (ultimoDados) render(ultimoDados); // redesenha na hora com as cores certas, sem esperar o próximo refresh
+}
+
+function alternarTema() {
+  const atual = document.documentElement.getAttribute("data-theme") || "dark";
+  aplicarTema(atual === "dark" ? "light" : "dark");
+}
+
+(function iniciarTema() {
+  let salvo = "dark";
+  try { salvo = localStorage.getItem("painelTema") || "dark"; } catch (e) { /* ignora */ }
+  document.documentElement.setAttribute("data-theme", salvo);
+})();
 
 function podiumHtml(top3, avatarClass) {
   if (!top3.length) return '<div class="empty-msg">Sem dados no período.</div>';
@@ -224,6 +304,68 @@ function podiumHtml(top3, avatarClass) {
       </div>
     </div>
   `).join("");
+}
+
+// ===== Perfis de venda (categorias definidas pelo Felipe, independentes de squad) =====
+const CATEGORIAS = [
+  { nome: "30+", membros: ["TAYNARA SOARES", "PAULO SERGIO", "VICTOR VARELA", "VICTOR BRITO"] },
+  { nome: "50+", membros: ["EMILY DANTAS", "CAMILLA MARINHO", "JAILTON", "CAIO TARGINO", "IGOR NEVES", "HADYJA SARAIVA", "LUCAS SANTOS"] },
+  { nome: "300+", membros: ["SABRINA SILVA", "EMANUEL PEREIRA"] },
+  { nome: "Hunter", membros: ["ALEXSANDRA WHENDELL", "VICTOR MEDEIROS", "GABRIEL VINICIUS"] },
+  { nome: "Farmer CF P - Func.", membros: ["ANDERSON CARLOS", "MARCELO MOREIRA", "ANA BEATRIZ"] },
+  { nome: "Farmer CF P - Sócios", membros: ["GUILHERME MATIAS", "CLEYTON ANDRADE"] },
+  { nome: "Farmer CF G - Func.", membros: ["WALTER GALDINO", "ANDERSON GABRIEL"] },
+  { nome: "Farmer CF G - Sócios", membros: ["VINICIUS BARROS", "LUIZ CAVALCANTE"] },
+  { nome: "Agência", membros: ["PEDRO MARANHÃO", "LUCAS MATHEUS"] },
+  { nome: "Revendedor", membros: ["JONATHAN SILVA", "YURI PINHEIRO"] },
+  { nome: "Brindeiro", membros: ["STEPHANIE OLIVEIRA"] }
+];
+
+function normalizar(s) {
+  return String(s || "").toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+}
+
+// Tolera variações de nome entre a lista do Felipe e a planilha
+// (ex: "EMILY" na planilha vs "EMILY DANTAS" na lista; "P MARANHAO" vs "PEDRO MARANHÃO")
+function encontrarVendedor(nomeBusca, todosVendedores) {
+  const alvo = normalizar(nomeBusca);
+  let achado = todosVendedores.find(v => normalizar(v.nome) === alvo);
+  if (achado) return achado;
+  const palavrasAlvo = alvo.split(/\s+/).filter(p => p.length >= 3);
+  achado = todosVendedores.find(v => {
+    const palavrasV = normalizar(v.nome).split(/\s+/).filter(p => p.length >= 3);
+    return palavrasV.some(p => palavrasAlvo.includes(p));
+  });
+  return achado || null;
+}
+
+function subCardHtml(categoria, todosVendedores, ritmoEsperado) {
+  const membros = categoria.membros
+    .map(nome => encontrarVendedor(nome, todosVendedores))
+    .filter(Boolean);
+  if (!membros.length) return "";
+  const ordenados = [...membros].sort((a, b) => b.pct - a.pct);
+  const maxPct = Math.max(...ordenados.map(v => v.pct), 0.0001);
+  const linhas = ordenados.map(v => {
+    const ratio = ritmoEsperado > 0 ? v.pct / ritmoEsperado : 1;
+    const status = statusFromRatio(ratio);
+    const cor = "var(--" + status + ")";
+    const largura = Math.max((v.pct / maxPct) * 100, 3);
+    return `
+      <div class="subcard-row">
+        <div class="subcard-avatar">${getInitials(v.nome)}</div>
+        <div class="subcard-nome" title="${v.nome}">${v.nome}</div>
+        <div class="subcard-bar-wrap"><div class="subcard-bar-fill" style="width:${largura}%; background:${cor}"></div></div>
+        <div class="subcard-pct">${fmtPct(v.pct)}</div>
+      </div>
+    `;
+  }).join("");
+  return `
+    <div class="subcard">
+      <div class="subcard-title">${categoria.nome}</div>
+      ${linhas}
+    </div>
+  `;
 }
 
 function ladderHtml(meta, fat) {
@@ -277,7 +419,7 @@ function desenharGrafico(canvasId, chartRefSetter, chartRefAtual, vendedores, ri
         datalabels: {
           anchor: "end",
           align: "top",
-          color: "#f3f4f6",
+          color: corTexto(),
           font: { weight: "700", size: 12 },
           formatter: (v) => v.toLocaleString("pt-BR", { minimumFractionDigits: 1 }) + "%"
         }
@@ -286,11 +428,11 @@ function desenharGrafico(canvasId, chartRefSetter, chartRefAtual, vendedores, ri
         y: {
           beginAtZero: true,
           suggestedMax: maiorValor * 1.18,
-          ticks: { color: "#9aa1ac", callback: (v) => v + "%" },
-          grid: { color: "rgba(255,255,255,0.06)" }
+          ticks: { color: corTextoSub(), callback: (v) => v + "%" },
+          grid: { color: corGrid() }
         },
         x: {
-          ticks: { color: "#f3f4f6", font: { size: 12 }, maxRotation: 40, minRotation: 0 },
+          ticks: { color: corTexto(), font: { size: 12 }, maxRotation: 40, minRotation: 0 },
           grid: { display: false }
         }
       }
@@ -300,13 +442,14 @@ function desenharGrafico(canvasId, chartRefSetter, chartRefAtual, vendedores, ri
 }
 
 function render(dados) {
+  ultimoDados = dados;
   const diasUteisSemana = 5;
   const { semanaLabel, dia, ritmoEsperado, vendedores, totalMeta, totalFat } = dados;
   const pctAtual = totalMeta > 0 ? totalFat / totalMeta : 0;
   const ratio = ritmoEsperado > 0 ? pctAtual / ritmoEsperado : 1;
   const status = statusFromRatio(ratio);
 
-  document.getElementById("semanaLabel").textContent = semanaLabel || "Semana comercial";
+  document.getElementById("semanaLabel").textContent = limparSemanaLabel(semanaLabel) || "Semana comercial";
   document.getElementById("diaLabel").textContent = dia ? `Dia ${dia} de ${diasUteisSemana} da semana` : "";
   document.getElementById("atualizadoLabel").textContent = "última leitura: " + new Date().toLocaleString("pt-BR");
 
@@ -326,7 +469,6 @@ function render(dados) {
           <div class="hero-num" style="color: var(--${status === 'vermelho' ? 'vermelho' : status === 'ambar' ? 'ambar' : 'verde'})">${fmtPct(pctAtual)}</div>
           <div class="hero-sub">${fmtBRL(totalFat)} faturado de ${fmtBRL(totalMeta)} de meta semanal</div>
         </div>
-        <div class="status-badge status-${status}">${statusIcone(status)} ${statusTexto(status)} · ritmo esperado ${fmtPct(ritmoEsperado)} até o dia ${dia}</div>
       </div>
       <div class="bar-wrap">
         <div class="bar-fill" style="width:${barPct}%"></div>
@@ -341,8 +483,8 @@ function render(dados) {
       <div class="ladder-row">${ladderHtml(totalMeta, totalFat)}</div>
     </div>
 
-    <div class="card rank-card">
-      <div class="card-label"><span class="dot dot-azul"></span> Top Closer — Falcons + Stark (Inside Sales)</div>
+    <div class="card rank-card rank-card--destaque">
+      <div class="card-label"><span class="dot dot-azul"></span> Top Closer (Inside Sales)</div>
       <div class="group-total">
         <div class="pct" style="color:var(--${closerStatus === 'vermelho' ? 'vermelho' : closerStatus === 'ambar' ? 'ambar' : 'verde'})">${fmtPct(closer.pct)}</div>
         <div class="desc">${fmtBRL(closer.fat)} de ${fmtBRL(closer.meta)} de meta do grupo</div>
@@ -350,13 +492,17 @@ function render(dados) {
       ${podiumHtml(closer.top3, "avatar-azul")}
     </div>
 
-    <div class="card rank-card">
-      <div class="card-label"><span class="dot dot-dourado"></span> Top GC — Maverick + Nexus (Gestão de Contas)</div>
+    <div class="card rank-card rank-card--destaque">
+      <div class="card-label"><span class="dot dot-dourado"></span> Top GC (Gestão de Contas)</div>
       <div class="group-total">
         <div class="pct" style="color:var(--${gcStatus === 'vermelho' ? 'vermelho' : gcStatus === 'ambar' ? 'ambar' : 'verde'})">${fmtPct(gc.pct)}</div>
         <div class="desc">${fmtBRL(gc.fat)} de ${fmtBRL(gc.meta)} de meta do grupo</div>
       </div>
       ${podiumHtml(gc.top3, "avatar-dourado")}
+    </div>
+
+    <div class="subcards-wrap">
+      ${CATEGORIAS.map(cat => subCardHtml(cat, vendedores, ritmoEsperado)).join("")}
     </div>
 
     <div class="card chart-card">
@@ -426,49 +572,87 @@ async function carregarDados() {
   }
 }
 
-// ===== Auto-scroll: desce devagar, pausa embaixo, sobe, pausa em cima, repete =====
-// Feito pra TV sem controle/mouse — a página "passeia" sozinha pra mostrar tudo.
+// ===== Auto-scroll por "páginas": nunca para com um card cortado =====
+// Em vez de rolar pixel a pixel contínuo, calcula os pontos onde cada linha
+// de cards termina e só pausa exatamente nessas bordas — cada pausa mostra
+// só cards inteiros. A transição entre páginas é rápida (não é o momento de leitura).
+const PAUSA_PAGINA_MS = 7000;   // quanto tempo fica parado em cada página
+const TRANSICAO_MS = 700;       // duração do "salto" suave até a próxima página
+
 let autoScrollIniciado = false;
-function iniciarAutoScroll() {
-  if (autoScrollIniciado) return;
-  autoScrollIniciado = true;
+let paginasScroll = [0];
+let paginaAtual = 0;
+let timerProximaPagina = null;
 
-  const VELOCIDADE = 0.5;       // pixels por frame (~60fps) — ajuste fino da velocidade
-  const PAUSA_TOPO_MS = 5000;   // pausa parado no topo
-  const PAUSA_FUNDO_MS = 7000;  // pausa parado no fim
-  let direcao = 1;              // 1 = descendo, -1 = subindo
-  let pausadoAte = 0;
+function calcularPaginasScroll() {
+  const container = document.getElementById("conteudo");
+  if (!container || !container.children.length) return [0];
 
+  // Agrupa os elementos que estão na mesma linha do grid (mesmo offsetTop) —
+  // isso mantém os dois cards lado a lado (Top Closer / Top GC) juntos na mesma página.
+  const linhas = [];
+  Array.from(container.children).forEach(el => {
+    const topo = el.offsetTop;
+    const base = topo + el.offsetHeight;
+    let linha = linhas.find(l => Math.abs(l.topo - topo) < 2);
+    if (linha) linha.base = Math.max(linha.base, base);
+    else linhas.push({ topo, base });
+  });
+  linhas.sort((a, b) => a.topo - b.topo);
+
+  const alturaTela = window.innerHeight;
+  const paginas = [0];
+  let inicioPagina = 0;
+  linhas.forEach(linha => {
+    if (linha.base - inicioPagina > alturaTela && linha.topo > inicioPagina) {
+      paginas.push(linha.topo);
+      inicioPagina = linha.topo;
+    }
+  });
+  return paginas;
+}
+
+function animarScrollPara(destino, aoTerminar) {
+  const origem = window.scrollY;
+  const inicioMs = Date.now();
   function passo() {
-    const agora = Date.now();
-    if (agora < pausadoAte) {
-      requestAnimationFrame(passo);
-      return;
-    }
-    const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-    if (maxScroll <= 4) {
-      // conteúdo cabe inteiro na tela, não precisa rolar
-      requestAnimationFrame(passo);
-      return;
-    }
-
-    let novoScroll = window.scrollY + VELOCIDADE * direcao;
-
-    if (direcao === 1 && novoScroll >= maxScroll) {
-      novoScroll = maxScroll;
-      direcao = -1;
-      pausadoAte = agora + PAUSA_FUNDO_MS;
-    } else if (direcao === -1 && novoScroll <= 0) {
-      novoScroll = 0;
-      direcao = 1;
-      pausadoAte = agora + PAUSA_TOPO_MS;
-    }
-
-    window.scrollTo(0, novoScroll);
-    requestAnimationFrame(passo);
+    const t = Math.min((Date.now() - inicioMs) / TRANSICAO_MS, 1);
+    window.scrollTo(0, origem + (destino - origem) * t);
+    if (t < 1) requestAnimationFrame(passo);
+    else if (aoTerminar) aoTerminar();
   }
   requestAnimationFrame(passo);
 }
+
+function agendarProximaPagina() {
+  clearTimeout(timerProximaPagina);
+  timerProximaPagina = setTimeout(avancarPagina, PAUSA_PAGINA_MS);
+}
+
+function avancarPagina() {
+  paginasScroll = calcularPaginasScroll(); // recalcula sempre — conteúdo muda a cada atualização de dados
+  if (paginasScroll.length <= 1) {
+    agendarProximaPagina();
+    return;
+  }
+  paginaAtual = (paginaAtual + 1) % paginasScroll.length;
+  animarScrollPara(paginasScroll[paginaAtual], agendarProximaPagina);
+}
+
+function iniciarAutoScroll() {
+  if (autoScrollIniciado) return;
+  autoScrollIniciado = true;
+  paginasScroll = calcularPaginasScroll();
+  paginaAtual = 0;
+  window.scrollTo(0, 0);
+  agendarProximaPagina();
+}
+
+(function sincronizarBotaoTema() {
+  const tema = document.documentElement.getAttribute("data-theme") || "dark";
+  const btn = document.getElementById("btnTema");
+  if (btn) btn.textContent = tema === "dark" ? "☀️ Tema claro" : "🌙 Tema escuro";
+})();
 
 carregarDados();
 setInterval(carregarDados, REFRESH_MS);
