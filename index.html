@@ -137,8 +137,18 @@
   .subcard-bar-fill { height:100%; border-radius:999px; }
   .subcard-pct { font-size:15px; font-weight:800; width:64px; text-align:right; flex-shrink:0; }
 
-  .subcards-wrap--grande { gap:18px; margin-top:32px; }
-  .subcard--grande { flex:1 1 0; min-width:300px; padding:20px 24px; }
+  .subcards-grid-topo {
+    grid-column: span 12;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 18px;
+    margin-top: 32px;
+  }
+  .subcards-grid-topo > .subcard:nth-child(1) { grid-column: 1; grid-row: 1; }
+  .subcards-grid-topo > .subcard:nth-child(2) { grid-column: 2; grid-row: 1 / span 2; }
+  .subcards-grid-topo > .subcard:nth-child(3) { grid-column: 3; grid-row: 1; }
+  .subcards-grid-topo > .subcard:nth-child(4) { grid-column: 3; grid-row: 2; }
+  .subcard--grande { min-width:0; padding:20px 24px; }
   .subcard--grande .subcard-title { font-size:14px; margin-bottom:12px; }
   .subcard--grande .subcard-row { gap:12px; margin-bottom:11px; }
   .subcard--grande .subcard-avatar { width:30px; height:30px; font-size:12px; }
@@ -332,13 +342,13 @@ function podiumHtml(top3, avatarClass) {
 
 // ===== Perfis de venda (categorias definidas pelo Felipe, independentes de squad) =====
 // Layout em 3 linhas: grandes (30+/50+/300+) > hunter+farmers > resto (preenche o espaço)
-const CATEGORIAS_GRANDES = [
+const CATEGORIAS_TOPO = [
   { nome: "30+", membros: ["TAYNARA SOARES", "PAULO SERGIO", "VICTOR VARELA", "VICTOR BRITO"] },
   { nome: "50+", membros: ["EMILY DANTAS", "CAMILLA MARINHO", "JAILTON", "CAIO TARGINO", "IGOR NEVES", "HADYJA SARAIVA", "LUCAS SANTOS"] },
-  { nome: "300+", membros: ["SABRINA SILVA", "EMANUEL PEREIRA"] }
+  { nome: "300+", membros: ["SABRINA SILVA", "EMANUEL PEREIRA"] },
+  { nome: "Hunter", membros: ["ALEXSANDRA WHENDELL", "VICTOR MEDEIROS", "GABRIEL VINICIUS"] }
 ];
 const CATEGORIAS_FARMERS = [
-  { nome: "Hunter", membros: ["ALEXSANDRA WHENDELL", "VICTOR MEDEIROS", "GABRIEL VINICIUS"] },
   { nome: "Farmer CF P - Func.", membros: ["ANDERSON CARLOS", "MARCELO MOREIRA", "ANA BEATRIZ"] },
   { nome: "Farmer CF P - Sócios", membros: ["GUILHERME MATIAS", "CLEYTON ANDRADE"] },
   { nome: "Farmer CF G - Func.", membros: ["WALTER GALDINO", "ANDERSON GABRIEL"] },
@@ -530,14 +540,14 @@ function render(dados) {
       ${podiumHtml(gc.top3, "avatar-dourado")}
     </div>
 
-    <div class="subcards-wrap subcards-wrap--grande">
-      ${CATEGORIAS_GRANDES.map(cat => subCardHtml(cat, vendedores, ritmoEsperado, true)).join("")}
+    <div class="subcards-grid-topo">
+      ${CATEGORIAS_TOPO.map(cat => subCardHtml(cat, vendedores, ritmoEsperado, true)).join("")}
     </div>
     <div class="subcards-wrap">
-      ${CATEGORIAS_FARMERS.map(cat => subCardHtml(cat, vendedores, ritmoEsperado, false)).join("")}
+      ${CATEGORIAS_FARMERS.map(cat => subCardHtml(cat, vendedores, ritmoEsperado, true)).join("")}
     </div>
     <div class="subcards-wrap">
-      ${CATEGORIAS_RESTO.map(cat => subCardHtml(cat, vendedores, ritmoEsperado, false)).join("")}
+      ${CATEGORIAS_RESTO.map(cat => subCardHtml(cat, vendedores, ritmoEsperado, true)).join("")}
     </div>
 
     <div class="card chart-card">
@@ -630,7 +640,7 @@ let timerProximaPagina = null;
 function calcularPaginasScroll() {
   const container = document.getElementById("conteudo");
   if (!container) return [0];
-  const subcards = container.querySelector(".subcards-wrap");
+  const subcards = container.querySelector(".subcards-grid-topo");
   const primeiroGrafico = container.querySelector(".chart-card");
   const paginas = [0];
   if (subcards) paginas.push(subcards.offsetTop);
