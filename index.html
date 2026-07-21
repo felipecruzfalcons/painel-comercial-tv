@@ -27,6 +27,7 @@
     --texto: #f3f4f6;
     --texto-sub: #9aa1ac;
     --grid-linha: rgba(255,255,255,0.06);
+    --destaque-vivo: #ffd400;
   }
   :root[data-theme="light"] {
     color-scheme: light;
@@ -49,6 +50,7 @@
     --texto: #111827;
     --texto-sub: #6b7280;
     --grid-linha: rgba(0,0,0,0.08);
+    --destaque-vivo: #ffd400;
   }
   body { transition: background-color .25s ease, color .25s ease; }
   * { box-sizing: border-box; }
@@ -87,9 +89,11 @@
   .chip .tier { font-size:13px; font-weight:700; color:var(--texto-sub); }
   .chip.proximo .tier { color:var(--dourado); }
   .chip .valor { font-size:17px; font-weight:800; margin-top:5px; }
-  .rank-card { grid-column: span 6; position:relative; overflow:hidden; }
-  .rank-card--destaque { border:1.5px solid var(--dourado); box-shadow: 0 14px 34px rgba(0,0,0,0.28); }
-  .rank-card--destaque::before { content:""; position:absolute; top:0; left:0; right:0; height:4px; background:linear-gradient(90deg, var(--azul), var(--dourado)); }
+  .rank-card { grid-column: span 6; position:relative; }
+  .rank-card--destaque {
+    border: 3px solid var(--destaque-vivo);
+    box-shadow: inset 0 0 0 2px #000, 0 14px 34px rgba(0,0,0,0.28);
+  }
   .rank-card .card-label .dot { width:9px; height:9px; border-radius:50%; display:inline-block; }
   .dot-azul { background:var(--azul); }
   .dot-dourado { background:var(--dourado); }
@@ -484,12 +488,12 @@ function render(dados) {
     </div>
 
     <div class="card rank-card rank-card--destaque">
-      <div class="card-label"><span class="dot dot-azul"></span> Top Closer (Inside Sales)</div>
+      <div class="card-label"><span class="dot dot-dourado"></span> Top Closer (Inside Sales)</div>
       <div class="group-total">
         <div class="pct" style="color:var(--${closerStatus === 'vermelho' ? 'vermelho' : closerStatus === 'ambar' ? 'ambar' : 'verde'})">${fmtPct(closer.pct)}</div>
         <div class="desc">${fmtBRL(closer.fat)} de ${fmtBRL(closer.meta)} de meta do grupo</div>
       </div>
-      ${podiumHtml(closer.top3, "avatar-azul")}
+      ${podiumHtml(closer.top3, "avatar-dourado")}
     </div>
 
     <div class="card rank-card rank-card--destaque">
@@ -576,8 +580,8 @@ async function carregarDados() {
 // Em vez de rolar pixel a pixel contínuo, calcula os pontos onde cada linha
 // de cards termina e só pausa exatamente nessas bordas — cada pausa mostra
 // só cards inteiros. A transição entre páginas é rápida (não é o momento de leitura).
-const PAUSA_PAGINA_MS = 7000;   // quanto tempo fica parado em cada página
-const TRANSICAO_MS = 700;       // duração do "salto" suave até a próxima página
+const PAUSA_PAGINA_MS = 20000;  // quanto tempo fica parado em cada página (tempo de leitura)
+const TRANSICAO_MS = 1400;      // duração do "salto" suave até a próxima página
 
 let autoScrollIniciado = false;
 let paginasScroll = [0];
