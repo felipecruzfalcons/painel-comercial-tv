@@ -155,6 +155,14 @@
   .subcard--grande .subcard-nome { font-size:19px; width:180px; }
   .subcard--grande .subcard-bar-wrap { height:15px; }
   .subcard--grande .subcard-pct { font-size:19px; width:76px; }
+
+  .subcard--media { min-width:0; padding:20px 22px; }
+  .subcard--media .subcard-title { font-size:14px; margin-bottom:13px; }
+  .subcard--media .subcard-row { gap:10px; margin-bottom:12px; }
+  .subcard--media .subcard-avatar { width:28px; height:28px; font-size:11px; }
+  .subcard--media .subcard-nome { font-size:14px; width:112px; }
+  .subcard--media .subcard-bar-wrap { height:10px; }
+  .subcard--media .subcard-pct { font-size:14px; width:52px; }
   .footer { grid-column: span 12; font-size:12px; color:var(--texto-sub); text-align:center; margin-top:6px; }
   .empty-msg { padding:44px; text-align:center; color:var(--texto-sub); }
   .theme-toggle {
@@ -378,7 +386,7 @@ function encontrarVendedor(nomeBusca, todosVendedores) {
   return achado || null;
 }
 
-function subCardHtml(categoria, todosVendedores, ritmoEsperado, grande) {
+function subCardHtml(categoria, todosVendedores, ritmoEsperado, variante) {
   const membros = categoria.membros
     .map(nome => encontrarVendedor(nome, todosVendedores))
     .filter(Boolean);
@@ -399,8 +407,9 @@ function subCardHtml(categoria, todosVendedores, ritmoEsperado, grande) {
       </div>
     `;
   }).join("");
+  const classeExtra = variante ? ' subcard--' + variante : '';
   return `
-    <div class="subcard${grande ? ' subcard--grande' : ''}">
+    <div class="subcard${classeExtra}">
       <div class="subcard-title">${categoria.nome}</div>
       ${linhas}
     </div>
@@ -541,13 +550,13 @@ function render(dados) {
     </div>
 
     <div class="subcards-grid-topo">
-      ${CATEGORIAS_TOPO.map(cat => subCardHtml(cat, vendedores, ritmoEsperado, true)).join("")}
+      ${CATEGORIAS_TOPO.map(cat => subCardHtml(cat, vendedores, ritmoEsperado, "grande")).join("")}
     </div>
     <div class="subcards-wrap">
-      ${CATEGORIAS_FARMERS.map(cat => subCardHtml(cat, vendedores, ritmoEsperado, true)).join("")}
+      ${CATEGORIAS_FARMERS.map(cat => subCardHtml(cat, vendedores, ritmoEsperado, "media")).join("")}
     </div>
     <div class="subcards-wrap">
-      ${CATEGORIAS_RESTO.map(cat => subCardHtml(cat, vendedores, ritmoEsperado, true)).join("")}
+      ${CATEGORIAS_RESTO.map(cat => subCardHtml(cat, vendedores, ritmoEsperado, "grande")).join("")}
     </div>
 
     <div class="card chart-card">
