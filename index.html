@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>Painel Comercial — SeuBoné</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <style>
   :root {
     color-scheme: dark;
@@ -83,7 +84,7 @@
   .p-right { margin-left:auto; text-align:right; }
   .p-pct { font-weight:800; font-size:20px; }
   .chart-card { grid-column: span 6; }
-  .chart-wrap { position:relative; height:280px; }
+  .chart-wrap { position:relative; height:320px; }
   .footer { grid-column: span 12; font-size:12px; color:var(--texto-sub); text-align:center; margin-top:6px; }
   .empty-msg { padding:44px; text-align:center; color:var(--texto-sub); }
 </style>
@@ -107,7 +108,7 @@
   </div>
 
 <script>
-// >>> URL do Apps Script (doGet) <
+// >>> URL do Apps Script (doGet) <<<
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx_8R_UGyyXDK68tazvTc9wj0-ECxbtCvHHOXArkAtvtTjX5uoe2kVCtnG2uxlkfkMxkA/exec?key=comercialpainel2026";
 
 const REFRESH_MS = 10 * 60 * 1000; // 10 min
@@ -250,34 +251,46 @@ function desenharGrafico(canvasId, chartRefSetter, chartRefAtual, vendedores, ri
     const ratio = ritmoEsperado > 0 ? v.pct / ritmoEsperado : 1;
     return statusCor(statusFromRatio(ratio));
   });
+  const maiorValor = Math.max(...ordenado.map(v => v.pct * 100), 10);
   const chart = new Chart(ctx, {
     type: "bar",
+    plugins: [ChartDataLabels],
     data: {
       labels: ordenado.map(v => v.nome),
       datasets: [{
         data: ordenado.map(v => +(v.pct * 100).toFixed(1)),
         backgroundColor: cores,
-        borderRadius: 6,
-        barThickness: 16
+        borderRadius: 8,
+        barPercentage: 0.62,
+        categoryPercentage: 0.78
       }]
     },
     options: {
-      indexAxis: "y",
       responsive: true,
       maintainAspectRatio: false,
+      layout: { padding: { top: 26 } },
       plugins: {
         legend: { display: false },
         tooltip: {
-          callbacks: { label: (ctx) => ctx.parsed.x.toLocaleString("pt-BR", { minimumFractionDigits: 1 }) + "%" }
+          callbacks: { label: (ctx) => ctx.parsed.y.toLocaleString("pt-BR", { minimumFractionDigits: 1 }) + "%" }
+        },
+        datalabels: {
+          anchor: "end",
+          align: "top",
+          color: "#f3f4f6",
+          font: { weight: "700", size: 12 },
+          formatter: (v) => v.toLocaleString("pt-BR", { minimumFractionDigits: 1 }) + "%"
         }
       },
       scales: {
-        x: {
+        y: {
+          beginAtZero: true,
+          suggestedMax: maiorValor * 1.18,
           ticks: { color: "#9aa1ac", callback: (v) => v + "%" },
           grid: { color: "rgba(255,255,255,0.06)" }
         },
-        y: {
-          ticks: { color: "#f3f4f6", font: { size: 12 } },
+        x: {
+          ticks: { color: "#f3f4f6", font: { size: 12 }, maxRotation: 40, minRotation: 0 },
           grid: { display: false }
         }
       }
