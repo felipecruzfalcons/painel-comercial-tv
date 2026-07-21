@@ -3,86 +3,97 @@
 <head>
 <meta charset="UTF-8">
 <title>Painel Comercial — SeuBoné</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <style>
   :root {
-    color-scheme: light;
-    --azul: #1e40af;
-    --dourado: #b8860b;
-    --dourado-bg: #fff7e0;
-    --cinza: #6b7280;
-    --cinza-bg: #f3f4f6;
-    --verde: #16a34a;
-    --verde-bg: #ecfdf3;
-    --ambar: #d97706;
-    --ambar-bg: #fff8ec;
-    --vermelho: #dc2626;
-    --vermelho-bg: #fef2f2;
-    --texto: #111827;
-    --texto-sub: #6b7280;
-    --borda: #e5e7eb;
+    color-scheme: dark;
+    --bg: #0e1015;
+    --card-bg: #171a21;
+    --card-bg-2: #1d212b;
+    --borda: #2a2f3a;
+    --azul: #4f8cff;
+    --azul-bg: rgba(79,140,255,0.14);
+    --dourado: #ffcf33;
+    --dourado-bg: rgba(255,207,51,0.14);
+    --cinza: #9aa1ac;
+    --cinza-bg: #20242e;
+    --verde: #3ddc97;
+    --verde-bg: rgba(61,220,151,0.14);
+    --ambar: #fbbf24;
+    --ambar-bg: rgba(251,191,36,0.14);
+    --vermelho: #ff6b6b;
+    --vermelho-bg: rgba(255,107,107,0.14);
+    --texto: #f3f4f6;
+    --texto-sub: #9aa1ac;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-    background: #f7f8fa;
+    background: var(--bg);
     color: var(--texto);
-    padding: 20px 28px 28px;
+    padding: 22px 32px 32px;
   }
-  .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:8px; }
-  .header .brand { font-size:15px; font-weight:700; letter-spacing:.04em; color:var(--azul); text-transform:uppercase; }
-  .header .semana { font-size:22px; font-weight:800; }
-  .header .meta-info { text-align:right; font-size:12px; color:var(--texto-sub); }
-  .grid { display:grid; grid-template-columns: repeat(12, 1fr); gap:14px; }
-  .card { background:#fff; border:1px solid var(--borda); border-radius:16px; padding:18px 20px; }
-  .card-label { font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--texto-sub); margin-bottom:8px; display:flex; align-items:center; gap:6px; }
-  .hero { grid-column: span 12; padding:24px 28px; }
-  .hero-top { display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px; }
-  .hero-num { font-size:64px; font-weight:800; line-height:1; }
-  .hero-sub { font-size:15px; color:var(--texto-sub); margin-top:6px; }
-  .status-badge { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:999px; font-weight:700; font-size:13px; white-space:nowrap; }
+  .header { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:18px; flex-wrap:wrap; gap:10px; }
+  .header .logo { height: 42px; width:auto; display:block; margin-bottom:6px; }
+  .header .brand-sub { font-size:13px; font-weight:700; letter-spacing:.1em; color:var(--texto-sub); text-transform:uppercase; }
+  .header .semana { font-size:26px; font-weight:800; margin-top:2px; }
+  .header .meta-info { text-align:right; font-size:14px; color:var(--texto-sub); }
+  .grid { display:grid; grid-template-columns: repeat(12, 1fr); gap:16px; }
+  .card { background:var(--card-bg); border:1px solid var(--borda); border-radius:18px; padding:20px 24px; }
+  .card-label { font-size:13px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--texto-sub); margin-bottom:10px; display:flex; align-items:center; gap:7px; }
+  .hero { grid-column: span 12; padding:28px 32px; }
+  .hero-top { display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:18px; }
+  .hero-num { font-size:76px; font-weight:800; line-height:1; }
+  .hero-sub { font-size:18px; color:var(--texto-sub); margin-top:8px; }
+  .status-badge { display:inline-flex; align-items:center; gap:7px; padding:10px 16px; border-radius:999px; font-weight:700; font-size:15px; white-space:nowrap; }
   .status-vermelho { background:var(--vermelho-bg); color:var(--vermelho); }
   .status-ambar { background:var(--ambar-bg); color:var(--ambar); }
   .status-verde { background:var(--verde-bg); color:var(--verde); }
-  .bar-wrap { position:relative; margin-top:18px; height:22px; background:var(--cinza-bg); border-radius:999px; overflow:visible; }
-  .bar-fill { position:absolute; left:0; top:0; height:100%; border-radius:999px; background:linear-gradient(90deg, var(--azul), #3b82f6); transition:width .6s ease; }
-  .bar-marker { position:absolute; top:-6px; bottom:-6px; width:3px; background:var(--dourado); }
-  .bar-marker-label { position:absolute; top:-26px; transform:translateX(-50%); font-size:11px; font-weight:700; color:var(--dourado); white-space:nowrap; }
-  .bar-legend { display:flex; justify-content:space-between; margin-top:8px; font-size:12px; color:var(--texto-sub); }
+  .bar-wrap { position:relative; margin-top:22px; height:26px; background:var(--cinza-bg); border-radius:999px; overflow:visible; }
+  .bar-fill { position:absolute; left:0; top:0; height:100%; border-radius:999px; background:linear-gradient(90deg, var(--azul), #7db2ff); transition:width .6s ease; }
+  .bar-marker { position:absolute; top:-7px; bottom:-7px; width:3px; background:var(--dourado); }
+  .bar-marker-label { position:absolute; top:-28px; transform:translateX(-50%); font-size:13px; font-weight:700; color:var(--dourado); white-space:nowrap; }
+  .bar-legend { display:flex; justify-content:space-between; margin-top:10px; font-size:13px; color:var(--texto-sub); }
   .ladder { grid-column: span 12; }
-  .ladder-row { display:flex; gap:10px; overflow-x:auto; padding-bottom:4px; }
-  .chip { flex:1 1 0; min-width:108px; border-radius:12px; padding:10px 12px; text-align:center; border:1px solid var(--borda); background:var(--cinza-bg); }
+  .ladder-row { display:flex; gap:12px; overflow-x:auto; padding-bottom:4px; }
+  .chip { flex:1 1 0; min-width:120px; border-radius:14px; padding:12px 14px; text-align:center; border:1px solid var(--borda); background:var(--cinza-bg); }
   .chip.proximo { background:var(--dourado-bg); border-color:var(--dourado); }
-  .chip .tier { font-size:12px; font-weight:700; color:var(--texto-sub); }
+  .chip .tier { font-size:13px; font-weight:700; color:var(--texto-sub); }
   .chip.proximo .tier { color:var(--dourado); }
-  .chip .valor { font-size:15px; font-weight:800; margin-top:4px; }
+  .chip .valor { font-size:17px; font-weight:800; margin-top:5px; }
   .rank-card { grid-column: span 6; }
-  .rank-card .card-label .dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+  .rank-card .card-label .dot { width:9px; height:9px; border-radius:50%; display:inline-block; }
   .dot-azul { background:var(--azul); }
   .dot-dourado { background:var(--dourado); }
-  .group-total { display:flex; align-items:baseline; gap:8px; margin-bottom:14px; padding-bottom:12px; border-bottom:1px dashed var(--borda); }
-  .group-total .pct { font-size:30px; font-weight:800; }
-  .group-total .desc { font-size:12px; color:var(--texto-sub); }
-  .podium-row { display:flex; align-items:center; gap:12px; padding:9px 0; border-bottom:1px solid var(--borda); }
+  .group-total { display:flex; align-items:baseline; gap:10px; margin-bottom:16px; padding-bottom:14px; border-bottom:1px dashed var(--borda); }
+  .group-total .pct { font-size:34px; font-weight:800; }
+  .group-total .desc { font-size:13px; color:var(--texto-sub); }
+  .podium-row { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--borda); }
   .podium-row:last-child { border-bottom:none; }
-  .medal { width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; color:#fff; flex-shrink:0; }
-  .medal-1 { background:#d4af37; }
-  .medal-2 { background:#9ca3af; }
-  .medal-3 { background:#b56a34; }
-  .p-nome { font-weight:700; font-size:14px; }
-  .p-squad { font-size:11px; color:var(--texto-sub); }
+  .medal { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; color:#161616; flex-shrink:0; }
+  .medal-1 { background:#e9c542; }
+  .medal-2 { background:#b7bec8; }
+  .medal-3 { background:#c98a52; }
+  .avatar { width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; color:#101114; flex-shrink:0; }
+  .avatar-azul { background: linear-gradient(135deg, var(--azul), #9cc0ff); }
+  .avatar-dourado { background: linear-gradient(135deg, var(--dourado), #ffe38a); }
+  .p-nome { font-weight:700; font-size:15px; }
+  .p-squad { font-size:12px; color:var(--texto-sub); }
   .p-right { margin-left:auto; text-align:right; }
-  .p-pct { font-weight:800; font-size:16px; }
-  .p-valor { font-size:11px; color:var(--texto-sub); }
-  .footer { grid-column: span 12; font-size:11px; color:var(--texto-sub); text-align:center; margin-top:4px; }
-  .empty-msg { padding:40px; text-align:center; color:var(--texto-sub); }
+  .p-pct { font-weight:800; font-size:20px; }
+  .chart-card { grid-column: span 6; }
+  .chart-wrap { position:relative; height:280px; }
+  .footer { grid-column: span 12; font-size:12px; color:var(--texto-sub); text-align:center; margin-top:6px; }
+  .empty-msg { padding:44px; text-align:center; color:var(--texto-sub); }
 </style>
 </head>
 <body>
 
   <div class="header">
     <div>
-      <div class="brand">SeuBoné · Painel Comercial</div>
+      <img class="logo" src="logo.png" alt="SeuBoné">
+      <div class="brand-sub">Painel Comercial</div>
       <div class="semana" id="semanaLabel">carregando…</div>
     </div>
     <div class="meta-info">
@@ -96,13 +107,16 @@
   </div>
 
 <script>
-// >>> TROQUE pela URL do seu Apps Script (a mesma usada no doGet) <<<
+// >>> URL do Apps Script (doGet) <
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx_8R_UGyyXDK68tazvTc9wj0-ECxbtCvHHOXArkAtvtTjX5uoe2kVCtnG2uxlkfkMxkA/exec?key=comercialpainel2026";
 
 const REFRESH_MS = 10 * 60 * 1000; // 10 min
 const CLOSER_SQUADS = ["FALCONS", "STARK"];
 const GC_SQUADS = ["NEXUS", "MAVERICK"];
 const EXCLUDE_SQUADS = ["TUBA", "SUPERNOVA", "BIGBANG", ""];
+
+let chartCloser = null;
+let chartGC = null;
 
 function fmtBRL(v) {
   return "R$ " + Number(v || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -115,8 +129,10 @@ function toNum(v) {
   const n = parseFloat(String(v || "").replace(",", "."));
   return isNaN(n) ? 0 : n;
 }
+function getInitials(nome) {
+  return String(nome || "").trim().split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase();
+}
 
-// Espera o formato bruto {sheet, updatedAt, rows} devolvido pelo doGet do Apps Script
 function parseDados(payload) {
   const rows = payload.rows || [];
 
@@ -165,7 +181,8 @@ function groupStats(vendedores, squads) {
   const fat = grupo.reduce((s, v) => s + v.fat, 0);
   const pct = meta > 0 ? fat / meta : 0;
   const top3 = [...grupo].sort((a, b) => b.pct - a.pct).slice(0, 3);
-  return { meta, fat, pct, top3 };
+  const todos = [...grupo].sort((a, b) => b.pct - a.pct);
+  return { meta, fat, pct, top3, todos };
 }
 
 function statusFromRatio(ratio) {
@@ -183,21 +200,26 @@ function statusIcone(status) {
   if (status === "ambar") return "⚠️";
   return "🔴";
 }
+function statusCor(status) {
+  if (status === "verde") return getComputedStyle(document.documentElement).getPropertyValue("--verde").trim();
+  if (status === "ambar") return getComputedStyle(document.documentElement).getPropertyValue("--ambar").trim();
+  return getComputedStyle(document.documentElement).getPropertyValue("--vermelho").trim();
+}
 
-function podiumHtml(top3) {
+function podiumHtml(top3, avatarClass) {
   if (!top3.length) return '<div class="empty-msg">Sem dados no período.</div>';
   const medals = ["medal-1", "medal-2", "medal-3"];
   const labels = ["1º", "2º", "3º"];
   return top3.map((v, i) => `
     <div class="podium-row">
       <div class="medal ${medals[i]}">${labels[i]}</div>
+      <div class="avatar ${avatarClass}">${getInitials(v.nome)}</div>
       <div>
         <div class="p-nome">${v.nome}</div>
         <div class="p-squad">${v.squad}</div>
       </div>
       <div class="p-right">
         <div class="p-pct">${fmtPct(v.pct)}</div>
-        <div class="p-valor">${fmtBRL(v.fat)}</div>
       </div>
     </div>
   `).join("");
@@ -218,6 +240,50 @@ function ladderHtml(meta, fat) {
       </div>
     `;
   }).join("");
+}
+
+function desenharGrafico(canvasId, chartRefSetter, chartRefAtual, vendedores, ritmoEsperado) {
+  if (chartRefAtual) chartRefAtual.destroy();
+  const ctx = document.getElementById(canvasId).getContext("2d");
+  const ordenado = [...vendedores].sort((a, b) => b.pct - a.pct);
+  const cores = ordenado.map(v => {
+    const ratio = ritmoEsperado > 0 ? v.pct / ritmoEsperado : 1;
+    return statusCor(statusFromRatio(ratio));
+  });
+  const chart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: ordenado.map(v => v.nome),
+      datasets: [{
+        data: ordenado.map(v => +(v.pct * 100).toFixed(1)),
+        backgroundColor: cores,
+        borderRadius: 6,
+        barThickness: 16
+      }]
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: { label: (ctx) => ctx.parsed.x.toLocaleString("pt-BR", { minimumFractionDigits: 1 }) + "%" }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: "#9aa1ac", callback: (v) => v + "%" },
+          grid: { color: "rgba(255,255,255,0.06)" }
+        },
+        y: {
+          ticks: { color: "#f3f4f6", font: { size: 12 } },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+  chartRefSetter(chart);
 }
 
 function render(dados) {
@@ -268,7 +334,7 @@ function render(dados) {
         <div class="pct" style="color:var(--${closerStatus === 'vermelho' ? 'vermelho' : closerStatus === 'ambar' ? 'ambar' : 'verde'})">${fmtPct(closer.pct)}</div>
         <div class="desc">${fmtBRL(closer.fat)} de ${fmtBRL(closer.meta)} de meta do grupo</div>
       </div>
-      ${podiumHtml(closer.top3)}
+      ${podiumHtml(closer.top3, "avatar-azul")}
     </div>
 
     <div class="card rank-card">
@@ -277,7 +343,17 @@ function render(dados) {
         <div class="pct" style="color:var(--${gcStatus === 'vermelho' ? 'vermelho' : gcStatus === 'ambar' ? 'ambar' : 'verde'})">${fmtPct(gc.pct)}</div>
         <div class="desc">${fmtBRL(gc.fat)} de ${fmtBRL(gc.meta)} de meta do grupo</div>
       </div>
-      ${podiumHtml(gc.top3)}
+      ${podiumHtml(gc.top3, "avatar-dourado")}
+    </div>
+
+    <div class="card chart-card">
+      <div class="card-label"><span class="dot dot-azul"></span> % da meta individual — Closer (Falcons + Stark)</div>
+      <div class="chart-wrap"><canvas id="chartCloser"></canvas></div>
+    </div>
+
+    <div class="card chart-card">
+      <div class="card-label"><span class="dot dot-dourado"></span> % da meta individual — GC (Maverick + Nexus)</div>
+      <div class="chart-wrap"><canvas id="chartGC"></canvas></div>
     </div>
 
     <div class="footer">
@@ -286,10 +362,11 @@ function render(dados) {
       Squads TUBA/SUPERNOVA/BIGBANG excluídos (inativos na semana)
     </div>
   `;
+
+  desenharGrafico("chartCloser", (c) => { chartCloser = c; }, chartCloser, closer.todos, ritmoEsperado);
+  desenharGrafico("chartGC", (c) => { chartGC = c; }, chartGC, gc.todos, ritmoEsperado);
 }
 
-// JSONP: contorna o bloqueio de CORS do Apps Script carregando a resposta
-// como uma tag <script> em vez de fetch() — não sofre restrição de CORS.
 function jsonpRequest(url) {
   return new Promise((resolve, reject) => {
     const callbackName = "painelCallback_" + Date.now() + "_" + Math.floor(Math.random() * 1e6);
