@@ -93,7 +93,18 @@
   .rank-card--destaque {
     border: 3px solid var(--destaque-vivo);
     box-shadow: inset 0 0 0 2px #000, 0 14px 34px rgba(0,0,0,0.28);
+    padding: 30px 34px;
+    min-height: 460px;
   }
+  .rank-card--destaque .card-label { font-size:16px; margin-bottom:16px; }
+  .rank-card--destaque .group-total .pct { font-size:46px; }
+  .rank-card--destaque .group-total .desc { font-size:16px; }
+  .rank-card--destaque .podium-row { padding:18px 0; gap:16px; }
+  .rank-card--destaque .medal { width:42px; height:42px; font-size:17px; }
+  .rank-card--destaque .avatar { width:44px; height:44px; font-size:16px; }
+  .rank-card--destaque .p-nome { font-size:20px; }
+  .rank-card--destaque .p-squad { font-size:14px; }
+  .rank-card--destaque .p-pct { font-size:26px; }
   .rank-card .card-label .dot { width:9px; height:9px; border-radius:50%; display:inline-block; }
   .dot-azul { background:var(--azul); }
   .dot-dourado { background:var(--dourado); }
@@ -116,15 +127,24 @@
   .chart-card { grid-column: span 12; }
   .chart-wrap { position:relative; height:320px; }
   .subcards-wrap { grid-column: span 12; display:flex; flex-wrap:wrap; gap:16px; }
-  .subcard { flex:1 1 270px; min-width:270px; background:var(--card-bg); border:1px solid var(--borda); border-radius:16px; padding:18px 20px; }
-  .subcard-title { font-size:13px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--texto-sub); margin-bottom:14px; }
-  .subcard-row { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .subcard { flex:1 1 200px; min-width:200px; background:var(--card-bg); border:1px solid var(--borda); border-radius:16px; padding:14px 16px; }
+  .subcard-title { font-size:12px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--texto-sub); margin-bottom:10px; }
+  .subcard-row { display:flex; align-items:center; gap:9px; margin-bottom:9px; }
   .subcard-row:last-child { margin-bottom:0; }
-  .subcard-avatar { width:28px; height:28px; border-radius:50%; background:var(--cinza-bg); color:var(--texto); font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-  .subcard-nome { font-size:14px; font-weight:600; width:118px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex-shrink:0; }
-  .subcard-bar-wrap { flex:1; height:11px; background:var(--cinza-bg); border-radius:999px; overflow:hidden; }
+  .subcard-avatar { width:24px; height:24px; border-radius:50%; background:var(--cinza-bg); color:var(--texto); font-size:10px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .subcard-nome { font-size:12px; font-weight:600; width:100px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex-shrink:0; }
+  .subcard-bar-wrap { flex:1; height:9px; background:var(--cinza-bg); border-radius:999px; overflow:hidden; }
   .subcard-bar-fill { height:100%; border-radius:999px; }
-  .subcard-pct { font-size:14px; font-weight:800; width:60px; text-align:right; flex-shrink:0; }
+  .subcard-pct { font-size:12px; font-weight:800; width:52px; text-align:right; flex-shrink:0; }
+
+  .subcards-wrap--grande { gap:18px; }
+  .subcard--grande { flex:1 1 0; min-width:300px; padding:22px 26px; }
+  .subcard--grande .subcard-title { font-size:15px; margin-bottom:16px; }
+  .subcard--grande .subcard-row { gap:14px; margin-bottom:16px; }
+  .subcard--grande .subcard-avatar { width:34px; height:34px; font-size:13px; }
+  .subcard--grande .subcard-nome { font-size:17px; width:150px; }
+  .subcard--grande .subcard-bar-wrap { height:13px; }
+  .subcard--grande .subcard-pct { font-size:17px; width:68px; }
   .footer { grid-column: span 12; font-size:12px; color:var(--texto-sub); text-align:center; margin-top:6px; }
   .empty-msg { padding:44px; text-align:center; color:var(--texto-sub); }
   .theme-toggle {
@@ -311,15 +331,20 @@ function podiumHtml(top3, avatarClass) {
 }
 
 // ===== Perfis de venda (categorias definidas pelo Felipe, independentes de squad) =====
-const CATEGORIAS = [
+// Layout em 3 linhas: grandes (30+/50+/300+) > hunter+farmers > resto (preenche o espaço)
+const CATEGORIAS_GRANDES = [
   { nome: "30+", membros: ["TAYNARA SOARES", "PAULO SERGIO", "VICTOR VARELA", "VICTOR BRITO"] },
   { nome: "50+", membros: ["EMILY DANTAS", "CAMILLA MARINHO", "JAILTON", "CAIO TARGINO", "IGOR NEVES", "HADYJA SARAIVA", "LUCAS SANTOS"] },
-  { nome: "300+", membros: ["SABRINA SILVA", "EMANUEL PEREIRA"] },
+  { nome: "300+", membros: ["SABRINA SILVA", "EMANUEL PEREIRA"] }
+];
+const CATEGORIAS_FARMERS = [
   { nome: "Hunter", membros: ["ALEXSANDRA WHENDELL", "VICTOR MEDEIROS", "GABRIEL VINICIUS"] },
   { nome: "Farmer CF P - Func.", membros: ["ANDERSON CARLOS", "MARCELO MOREIRA", "ANA BEATRIZ"] },
   { nome: "Farmer CF P - Sócios", membros: ["GUILHERME MATIAS", "CLEYTON ANDRADE"] },
   { nome: "Farmer CF G - Func.", membros: ["WALTER GALDINO", "ANDERSON GABRIEL"] },
-  { nome: "Farmer CF G - Sócios", membros: ["VINICIUS BARROS", "LUIZ CAVALCANTE"] },
+  { nome: "Farmer CF G - Sócios", membros: ["VINICIUS BARROS", "LUIZ CAVALCANTE"] }
+];
+const CATEGORIAS_RESTO = [
   { nome: "Agência", membros: ["PEDRO MARANHÃO", "LUCAS MATHEUS"] },
   { nome: "Revendedor", membros: ["JONATHAN SILVA", "YURI PINHEIRO"] },
   { nome: "Brindeiro", membros: ["STEPHANIE OLIVEIRA"] }
@@ -343,7 +368,7 @@ function encontrarVendedor(nomeBusca, todosVendedores) {
   return achado || null;
 }
 
-function subCardHtml(categoria, todosVendedores, ritmoEsperado) {
+function subCardHtml(categoria, todosVendedores, ritmoEsperado, grande) {
   const membros = categoria.membros
     .map(nome => encontrarVendedor(nome, todosVendedores))
     .filter(Boolean);
@@ -365,7 +390,7 @@ function subCardHtml(categoria, todosVendedores, ritmoEsperado) {
     `;
   }).join("");
   return `
-    <div class="subcard">
+    <div class="subcard${grande ? ' subcard--grande' : ''}">
       <div class="subcard-title">${categoria.nome}</div>
       ${linhas}
     </div>
@@ -505,8 +530,14 @@ function render(dados) {
       ${podiumHtml(gc.top3, "avatar-dourado")}
     </div>
 
+    <div class="subcards-wrap subcards-wrap--grande">
+      ${CATEGORIAS_GRANDES.map(cat => subCardHtml(cat, vendedores, ritmoEsperado, true)).join("")}
+    </div>
     <div class="subcards-wrap">
-      ${CATEGORIAS.map(cat => subCardHtml(cat, vendedores, ritmoEsperado)).join("")}
+      ${CATEGORIAS_FARMERS.map(cat => subCardHtml(cat, vendedores, ritmoEsperado, false)).join("")}
+    </div>
+    <div class="subcards-wrap">
+      ${CATEGORIAS_RESTO.map(cat => subCardHtml(cat, vendedores, ritmoEsperado, false)).join("")}
     </div>
 
     <div class="card chart-card">
