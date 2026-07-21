@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Painel Comercial — SeuBoné</title>
+<style>
+  :root {
+    color-scheme: light;
+    --azul: #1e40af;
+    --dourado: #b8860b;
+    --dourado-bg: #fff7e0;
+    --cinza: #6b7280;
+    --cinza-bg: #f3f4f6;
+    --verde: #16a34a;
+    --verde-bg: #ecfdf3;
+    --ambar: #d97706;
+    --ambar-bg: #fff8ec;
+    --vermelho: #dc2626;
+    --vermelho-bg: #fef2f2;
+    --texto: #111827;
+    --texto-sub: #6b7280;
+    --borda: #e5e7eb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: #f7f8fa;
+    color: var(--texto);
+    padding: 20px 28px 28px;
+  }
+  .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:8px; }
+  .header .brand { font-size:15px; font-weight:700; letter-spacing:.04em; color:var(--azul); text-transform:uppercase; }
+  .header .semana { font-size:22px; font-weight:800; }
+  .header .meta-info { text-align:right; font-size:12px; color:var(--texto-sub); }
+  .grid { display:grid; grid-template-columns: repeat(12, 1fr); gap:14px; }
+  .card { background:#fff; border:1px solid var(--borda); border-radius:16px; padding:18px 20px; }
+  .card-label { font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--texto-sub); margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+  .hero { grid-column: span 12; padding:24px 28px; }
+  .hero-top { display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px; }
+  .hero-num { font-size:64px; font-weight:800; line-height:1; }
+  .hero-sub { font-size:15px; color:var(--texto-sub); margin-top:6px; }
+  .status-badge { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:999px; font-weight:700; font-size:13px; white-space:nowrap; }
+  .status-vermelho { background:var(--vermelho-bg); color:var(--vermelho); }
+  .status-ambar { background:var(--ambar-bg); color:var(--ambar); }
+  .status-verde { background:var(--verde-bg); color:var(--verde); }
+  .bar-wrap { position:relative; margin-top:18px; height:22px; background:var(--cinza-bg); border-radius:999px; overflow:visible; }
+  .bar-fill { position:absolute; left:0; top:0; height:100%; border-radius:999px; background:linear-gradient(90deg, var(--azul), #3b82f6); transition:width .6s ease; }
+  .bar-marker { position:absolute; top:-6px; bottom:-6px; width:3px; background:var(--dourado); }
+  .bar-marker-label { position:absolute; top:-26px; transform:translateX(-50%); font-size:11px; font-weight:700; color:var(--dourado); white-space:nowrap; }
+  .bar-legend { display:flex; justify-content:space-between; margin-top:8px; font-size:12px; color:var(--texto-sub); }
+  .ladder { grid-column: span 12; }
+  .ladder-row { display:flex; gap:10px; overflow-x:auto; padding-bottom:4px; }
+  .chip { flex:1 1 0; min-width:108px; border-radius:12px; padding:10px 12px; text-align:center; border:1px solid var(--borda); background:var(--cinza-bg); }
+  .chip.proximo { background:var(--dourado-bg); border-color:var(--dourado); }
+  .chip .tier { font-size:12px; font-weight:700; color:var(--texto-sub); }
+  .chip.proximo .tier { color:var(--dourado); }
+  .chip .valor { font-size:15px; font-weight:800; margin-top:4px; }
+  .rank-card { grid-column: span 6; }
+  .rank-card .card-label .dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+  .dot-azul { background:var(--azul); }
+  .dot-dourado { background:var(--dourado); }
+  .group-total { display:flex; align-items:baseline; gap:8px; margin-bottom:14px; padding-bottom:12px; border-bottom:1px dashed var(--borda); }
+  .group-total .pct { font-size:30px; font-weight:800; }
+  .group-total .desc { font-size:12px; color:var(--texto-sub); }
+  .podium-row { display:flex; align-items:center; gap:12px; padding:9px 0; border-bottom:1px solid var(--borda); }
+  .podium-row:last-child { border-bottom:none; }
+  .medal { width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; color:#fff; flex-shrink:0; }
+  .medal-1 { background:#d4af37; }
+  .medal-2 { background:#9ca3af; }
+  .medal-3 { background:#b56a34; }
+  .p-nome { font-weight:700; font-size:14px; }
+  .p-squad { font-size:11px; color:var(--texto-sub); }
+  .p-right { margin-left:auto; text-align:right; }
+  .p-pct { font-weight:800; font-size:16px; }
+  .p-valor { font-size:11px; color:var(--texto-sub); }
+  .footer { grid-column: span 12; font-size:11px; color:var(--texto-sub); text-align:center; margin-top:4px; }
+  .empty-msg { padding:40px; text-align:center; color:var(--texto-sub); }
+</style>
+</head>
+<body>
+
+  <div class="header">
+    <div>
+      <div class="brand">SeuBoné · Painel Comercial</div>
+      <div class="semana" id="semanaLabel">carregando…</div>
+    </div>
+    <div class="meta-info">
+      <div id="diaLabel"></div>
+      <div id="atualizadoLabel">última leitura: —</div>
+    </div>
+  </div>
+
+  <div id="conteudo" class="grid">
+    <div class="empty-msg" style="grid-column: span 12;">Carregando dados da planilha…</div>
+  </div>
+
+<script>
+// >>> TROQUE pela URL do seu Apps Script (a mesma usada no doGet) <<<
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx_8R_UGyyXDK68tazvTc9wj0-ECxbtCvHHOXArkAtvtTjX5uoe2kVCtnG2uxlkfkMxkA/exec?key=comercialpainel2026";
+
+const REFRESH_MS = 10 * 60 * 1000; // 10 min
+const CLOSER_SQUADS = ["FALCONS", "STARK"];
+const GC_SQUADS = ["NEXUS", "MAVERICK"];
+const EXCLUDE_SQUADS = ["TUBA", "SUPERNOVA", "BIGBANG", ""];
+
+function fmtBRL(v) {
+  return "R$ " + Number(v || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+function fmtPct(v) {
+  return (Number(v || 0) * 100).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%";
+}
+function toNum(v) {
+  if (typeof v === "number") return v;
+  const n = parseFloat(String(v || "").replace(",", "."));
+  return isNaN(n) ? 0 : n;
+}
+
+// Espera o formato bruto {sheet, updatedAt, rows} devolvido pelo doGet do Apps Script
+function parseDados(payload) {
+  const rows = payload.rows || [];
+
+  const weekRow = rows.find(r => r.some(c => typeof c === "string" && c.includes("Dia da semana atual")));
+  const semanaLabel = weekRow ? weekRow[0] : "";
+  let dia = null;
+  if (weekRow) {
+    const idx = weekRow.findIndex(c => typeof c === "string" && c.includes("Dia da semana atual"));
+    dia = toNum(weekRow[idx + 1]);
+  }
+
+  const paceRow = rows.find(r => r.some(c => typeof c === "string" && c.includes("% de realização esperado")));
+  let ritmoEsperado = null;
+  if (paceRow) {
+    const idx = paceRow.findIndex(c => typeof c === "string" && c.includes("% de realização esperado"));
+    ritmoEsperado = toNum(paceRow[idx + 1]);
+  }
+
+  const headerIdx = rows.findIndex(r => r[0] === "Vendedor");
+  const totalIdx = rows.findIndex(r => r[0] === "Total");
+  const vendorRows = headerIdx >= 0 && totalIdx > headerIdx ? rows.slice(headerIdx + 1, totalIdx) : [];
+
+  const vendedores = vendorRows
+    .filter(r => r[0] && String(r[0]).trim() !== "")
+    .map(r => ({
+      nome: String(r[0]).trim(),
+      meta: toNum(r[1]),
+      fat: toNum(r[2]),
+      pct: toNum(r[3]),
+      squad: String(r[8] || "").trim().toUpperCase()
+    }))
+    .filter(v => !EXCLUDE_SQUADS.includes(v.squad));
+
+  let totalMeta = 0, totalFat = 0;
+  if (totalIdx >= 0) {
+    totalMeta = toNum(rows[totalIdx][1]);
+    totalFat = toNum(rows[totalIdx][2]);
+  }
+
+  return { semanaLabel, dia, ritmoEsperado, vendedores, totalMeta, totalFat };
+}
+
+function groupStats(vendedores, squads) {
+  const grupo = vendedores.filter(v => squads.includes(v.squad));
+  const meta = grupo.reduce((s, v) => s + v.meta, 0);
+  const fat = grupo.reduce((s, v) => s + v.fat, 0);
+  const pct = meta > 0 ? fat / meta : 0;
+  const top3 = [...grupo].sort((a, b) => b.pct - a.pct).slice(0, 3);
+  return { meta, fat, pct, top3 };
+}
+
+function statusFromRatio(ratio) {
+  if (ratio >= 0.95) return "verde";
+  if (ratio >= 0.7) return "ambar";
+  return "vermelho";
+}
+function statusTexto(status) {
+  if (status === "verde") return "NO RITMO";
+  if (status === "ambar") return "ATENÇÃO";
+  return "ATRASADO";
+}
+function statusIcone(status) {
+  if (status === "verde") return "✅";
+  if (status === "ambar") return "⚠️";
+  return "🔴";
+}
+
+function podiumHtml(top3) {
+  if (!top3.length) return '<div class="empty-msg">Sem dados no período.</div>';
+  const medals = ["medal-1", "medal-2", "medal-3"];
+  const labels = ["1º", "2º", "3º"];
+  return top3.map((v, i) => `
+    <div class="podium-row">
+      <div class="medal ${medals[i]}">${labels[i]}</div>
+      <div>
+        <div class="p-nome">${v.nome}</div>
+        <div class="p-squad">${v.squad}</div>
+      </div>
+      <div class="p-right">
+        <div class="p-pct">${fmtPct(v.pct)}</div>
+        <div class="p-valor">${fmtBRL(v.fat)}</div>
+      </div>
+    </div>
+  `).join("");
+}
+
+function ladderHtml(meta, fat) {
+  const tiers = [70, 80, 90, 100, 110, 120, 130, 140];
+  let proximoMarcado = false;
+  return tiers.map(t => {
+    const faltaVal = (meta * t / 100) - fat;
+    const isProximo = !proximoMarcado && faltaVal > 0;
+    if (isProximo) proximoMarcado = true;
+    const faltaTxt = faltaVal > 0 ? fmtBRL(faltaVal) : "batido ✓";
+    return `
+      <div class="chip ${isProximo ? 'proximo' : ''}">
+        <div class="tier">${t}% da meta</div>
+        <div class="valor">${faltaTxt}</div>
+      </div>
+    `;
+  }).join("");
+}
+
+function render(dados) {
+  const diasUteisSemana = 5;
+  const { semanaLabel, dia, ritmoEsperado, vendedores, totalMeta, totalFat } = dados;
+  const pctAtual = totalMeta > 0 ? totalFat / totalMeta : 0;
+  const ratio = ritmoEsperado > 0 ? pctAtual / ritmoEsperado : 1;
+  const status = statusFromRatio(ratio);
+
+  document.getElementById("semanaLabel").textContent = semanaLabel || "Semana comercial";
+  document.getElementById("diaLabel").textContent = dia ? `Dia ${dia} de ${diasUteisSemana} da semana` : "";
+  document.getElementById("atualizadoLabel").textContent = "última leitura: " + new Date().toLocaleString("pt-BR");
+
+  const closer = groupStats(vendedores, CLOSER_SQUADS);
+  const gc = groupStats(vendedores, GC_SQUADS);
+  const closerStatus = statusFromRatio(ritmoEsperado > 0 ? closer.pct / ritmoEsperado : 1);
+  const gcStatus = statusFromRatio(ritmoEsperado > 0 ? gc.pct / ritmoEsperado : 1);
+
+  const barPct = Math.min(pctAtual * 100, 100);
+  const markerPct = Math.min((ritmoEsperado || 0) * 100, 100);
+
+  document.getElementById("conteudo").innerHTML = `
+    <div class="card hero">
+      <div class="hero-top">
+        <div>
+          <div class="card-label">Resultado semanal · time comercial (closer + gc)</div>
+          <div class="hero-num" style="color: var(--${status === 'vermelho' ? 'vermelho' : status === 'ambar' ? 'ambar' : 'verde'})">${fmtPct(pctAtual)}</div>
+          <div class="hero-sub">${fmtBRL(totalFat)} faturado de ${fmtBRL(totalMeta)} de meta semanal</div>
+        </div>
+        <div class="status-badge status-${status}">${statusIcone(status)} ${statusTexto(status)} · ritmo esperado ${fmtPct(ritmoEsperado)} até o dia ${dia}</div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-fill" style="width:${barPct}%"></div>
+        <div class="bar-marker" style="left:${markerPct}%"></div>
+        <div class="bar-marker-label" style="left:${markerPct}%">ritmo ${fmtPct(ritmoEsperado)}</div>
+      </div>
+      <div class="bar-legend"><span>0%</span><span>100% da meta</span></div>
+    </div>
+
+    <div class="card ladder">
+      <div class="card-label">🪜 Régua — quanto falta para bater cada patamar da meta</div>
+      <div class="ladder-row">${ladderHtml(totalMeta, totalFat)}</div>
+    </div>
+
+    <div class="card rank-card">
+      <div class="card-label"><span class="dot dot-azul"></span> Top Closer — Falcons + Stark (Inside Sales)</div>
+      <div class="group-total">
+        <div class="pct" style="color:var(--${closerStatus === 'vermelho' ? 'vermelho' : closerStatus === 'ambar' ? 'ambar' : 'verde'})">${fmtPct(closer.pct)}</div>
+        <div class="desc">${fmtBRL(closer.fat)} de ${fmtBRL(closer.meta)} de meta do grupo</div>
+      </div>
+      ${podiumHtml(closer.top3)}
+    </div>
+
+    <div class="card rank-card">
+      <div class="card-label"><span class="dot dot-dourado"></span> Top GC — Maverick + Nexus (Gestão de Contas)</div>
+      <div class="group-total">
+        <div class="pct" style="color:var(--${gcStatus === 'vermelho' ? 'vermelho' : gcStatus === 'ambar' ? 'ambar' : 'verde'})">${fmtPct(gc.pct)}</div>
+        <div class="desc">${fmtBRL(gc.fat)} de ${fmtBRL(gc.meta)} de meta do grupo</div>
+      </div>
+      ${podiumHtml(gc.top3)}
+    </div>
+
+    <div class="footer">
+      Fonte: aba "Cópia de Gráfico Semanal TV - Premium" via Apps Script · atualiza a cada ~10 min ·
+      Falcons/Stark = squads Closer (Inside Sales) · Maverick/Nexus = squads GC (Gestão de Contas) ·
+      Squads TUBA/SUPERNOVA/BIGBANG excluídos (inativos na semana)
+    </div>
+  `;
+}
+
+// JSONP: contorna o bloqueio de CORS do Apps Script carregando a resposta
+// como uma tag <script> em vez de fetch() — não sofre restrição de CORS.
+function jsonpRequest(url) {
+  return new Promise((resolve, reject) => {
+    const callbackName = "painelCallback_" + Date.now() + "_" + Math.floor(Math.random() * 1e6);
+    const script = document.createElement("script");
+    let timeoutId;
+
+    function cleanup() {
+      clearTimeout(timeoutId);
+      delete window[callbackName];
+      script.remove();
+    }
+
+    window[callbackName] = function(data) {
+      resolve(data);
+      cleanup();
+    };
+    script.onerror = function() {
+      reject(new Error("Falha ao carregar o Apps Script (verifique a URL/deploy)"));
+      cleanup();
+    };
+    timeoutId = setTimeout(function() {
+      reject(new Error("Tempo esgotado aguardando resposta do Apps Script"));
+      cleanup();
+    }, 15000);
+
+    const sep = url.includes("?") ? "&" : "?";
+    script.src = url + sep + "callback=" + callbackName + "&_=" + Date.now();
+    document.body.appendChild(script);
+  });
+}
+
+async function carregarDados() {
+  try {
+    const payload = await jsonpRequest(APPS_SCRIPT_URL);
+    if (payload.error) throw new Error(payload.error);
+    const dados = parseDados(payload);
+    render(dados);
+  } catch (e) {
+    document.getElementById("conteudo").innerHTML = `<div class="empty-msg" style="grid-column:span 12;">
+      Erro ao carregar dados: ${e.message || e}<br>
+      Verifique se a URL do Apps Script está correta e se o deploy está com acesso "Qualquer pessoa".
+    </div>`;
+    console.error("Erro ao carregar painel:", e);
+  }
+}
+
+carregarDados();
+setInterval(carregarDados, REFRESH_MS);
+</script>
+
+</body>
+</html>
