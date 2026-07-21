@@ -584,7 +584,7 @@ function jsonpRequest(url) {
     timeoutId = setTimeout(function() {
       reject(new Error("Tempo esgotado aguardando resposta do Apps Script"));
       cleanup();
-    }, 15000);
+    }, 25000);
 
     const sep = url.includes("?") ? "&" : "?";
     script.src = url + sep + "callback=" + callbackName + "&_=" + Date.now();
@@ -599,11 +599,16 @@ async function carregarDados() {
     const dados = parseDados(payload);
     render(dados);
   } catch (e) {
-    document.getElementById("conteudo").innerHTML = `<div class="empty-msg" style="grid-column:span 12;">
-      Erro ao carregar dados: ${e.message || e}<br>
-      Verifique se a URL do Apps Script está correta e se o deploy está com acesso "Qualquer pessoa".
-    </div>`;
+    // Só mostra a tela de erro se ainda não tiver nenhum dado carregado antes —
+    // assim uma falha passageira não apaga um painel que já estava funcionando.
+    if (!ultimoDados) {
+      document.getElementById("conteudo").innerHTML = `<div class="empty-msg" style="grid-column:span 12;">
+        Erro ao carregar dados: ${e.message || e}<br>
+        Verifique se a URL do Apps Script está correta e se o deploy está com acesso "Qualquer pessoa".
+      </div>`;
+    }
     console.error("Erro ao carregar painel:", e);
+    setTimeout(carregarDados, 30000); // tenta de novo em 30s, não espera os 10 min do ciclo normal
   }
 }
 
