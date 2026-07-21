@@ -83,7 +83,7 @@
   .p-squad { font-size:12px; color:var(--texto-sub); }
   .p-right { margin-left:auto; text-align:right; }
   .p-pct { font-weight:800; font-size:20px; }
-  .chart-card { grid-column: span 6; }
+  .chart-card { grid-column: span 12; }
   .chart-wrap { position:relative; height:320px; }
   .footer { grid-column: span 12; font-size:12px; color:var(--texto-sub); text-align:center; margin-top:6px; }
   .empty-msg { padding:44px; text-align:center; color:var(--texto-sub); }
@@ -426,8 +426,53 @@ async function carregarDados() {
   }
 }
 
+// ===== Auto-scroll: desce devagar, pausa embaixo, sobe, pausa em cima, repete =====
+// Feito pra TV sem controle/mouse — a página "passeia" sozinha pra mostrar tudo.
+let autoScrollIniciado = false;
+function iniciarAutoScroll() {
+  if (autoScrollIniciado) return;
+  autoScrollIniciado = true;
+
+  const VELOCIDADE = 0.5;       // pixels por frame (~60fps) — ajuste fino da velocidade
+  const PAUSA_TOPO_MS = 5000;   // pausa parado no topo
+  const PAUSA_FUNDO_MS = 7000;  // pausa parado no fim
+  let direcao = 1;              // 1 = descendo, -1 = subindo
+  let pausadoAte = 0;
+
+  function passo() {
+    const agora = Date.now();
+    if (agora < pausadoAte) {
+      requestAnimationFrame(passo);
+      return;
+    }
+    const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+    if (maxScroll <= 4) {
+      // conteúdo cabe inteiro na tela, não precisa rolar
+      requestAnimationFrame(passo);
+      return;
+    }
+
+    let novoScroll = window.scrollY + VELOCIDADE * direcao;
+
+    if (direcao === 1 && novoScroll >= maxScroll) {
+      novoScroll = maxScroll;
+      direcao = -1;
+      pausadoAte = agora + PAUSA_FUNDO_MS;
+    } else if (direcao === -1 && novoScroll <= 0) {
+      novoScroll = 0;
+      direcao = 1;
+      pausadoAte = agora + PAUSA_TOPO_MS;
+    }
+
+    window.scrollTo(0, novoScroll);
+    requestAnimationFrame(passo);
+  }
+  requestAnimationFrame(passo);
+}
+
 carregarDados();
 setInterval(carregarDados, REFRESH_MS);
+setTimeout(iniciarAutoScroll, 1500); // dá tempo do primeiro carregamento renderizar antes de começar a rolar
 </script>
 
 </body>
