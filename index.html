@@ -81,6 +81,7 @@
   .bar-fill { position:absolute; left:0; top:0; height:100%; border-radius:999px; transition:width .6s ease; }
   .bar-marker { position:absolute; top:-7px; bottom:-7px; width:3px; background:var(--dourado); }
   .bar-marker-label { position:absolute; top:-28px; transform:translateX(-50%); font-size:13px; font-weight:700; color:var(--dourado); white-space:nowrap; }
+  .bar-marker-label--alt { top:-48px; }
   .bar-legend { display:flex; justify-content:space-between; margin-top:10px; font-size:13px; color:var(--texto-sub); }
   .ladder { grid-column: span 12; }
   .ladder-row { display:flex; gap:12px; overflow-x:auto; padding-bottom:4px; }
@@ -509,6 +510,15 @@ function render(dados) {
   const barPct = Math.min(pctAtual * 100, 100);
   const markerPct = Math.min((ritmoEsperado || 0) * 100, 100);
 
+  // Projeção: no ritmo atual (faturado ÷ dias já passados), quanto deve fechar até o fim da semana.
+  const projecaoFat = dia > 0 ? (totalFat / dia) * diasUteisSemana : totalFat;
+  const projecaoPct = totalMeta > 0 ? projecaoFat / totalMeta : 0;
+  const statusProjecao = statusFromRatio(projecaoPct);
+  const projMarkerPct = Math.min(projecaoPct * 100, 100);
+  // Se as duas marcações ficarem muito próximas (ou iguais), a Projeção Semanal prevalece:
+  // ela fica na posição/altura padrão (mais perto da barra) e o Esperado Atual sobe para não sobrepor.
+  const marcadoresProximos = Math.abs(projMarkerPct - markerPct) < 8;
+
   document.getElementById("conteudo").innerHTML = `
     <div class="card hero">
       <div class="hero-top">
@@ -520,8 +530,10 @@ function render(dados) {
       </div>
       <div class="bar-wrap">
         <div class="bar-fill" style="width:${barPct}%; background:var(--${status})"></div>
-        <div class="bar-marker" style="left:${markerPct}%"></div>
-        <div class="bar-marker-label" style="left:${markerPct}%">ritmo ${fmtPct(ritmoEsperado)}</div>
+        <div class="bar-marker" style="left:${markerPct}%; z-index:1"></div>
+        <div class="bar-marker-label${marcadoresProximos ? ' bar-marker-label--alt' : ''}" style="left:${markerPct}%; z-index:1">Esperado Atual ${fmtPct(ritmoEsperado)}</div>
+        <div class="bar-marker" style="left:${projMarkerPct}%; background:var(--${statusProjecao}); z-index:2"></div>
+        <div class="bar-marker-label" style="left:${projMarkerPct}%; color:var(--${statusProjecao}); z-index:2">Projeção Semanal ${fmtPct(projecaoPct)}</div>
       </div>
       <div class="bar-legend"><span>0%</span><span>100% da meta</span></div>
     </div>
