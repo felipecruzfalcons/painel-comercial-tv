@@ -78,7 +78,7 @@
   .status-ambar { background:var(--ambar-bg); color:var(--ambar); }
   .status-verde { background:var(--verde-bg); color:var(--verde); }
   .bar-wrap { position:relative; margin-top:22px; height:26px; background:var(--cinza-bg); border-radius:999px; overflow:visible; }
-  .bar-fill { position:absolute; left:0; top:0; height:100%; border-radius:999px; background:linear-gradient(90deg, var(--azul), #7db2ff); transition:width .6s ease; }
+  .bar-fill { position:absolute; left:0; top:0; height:100%; border-radius:999px; transition:width .6s ease; }
   .bar-marker { position:absolute; top:-7px; bottom:-7px; width:3px; background:var(--dourado); }
   .bar-marker-label { position:absolute; top:-28px; transform:translateX(-50%); font-size:13px; font-weight:700; color:var(--dourado); white-space:nowrap; }
   .bar-legend { display:flex; justify-content:space-between; margin-top:10px; font-size:13px; color:var(--texto-sub); }
@@ -519,7 +519,7 @@ function render(dados) {
         </div>
       </div>
       <div class="bar-wrap">
-        <div class="bar-fill" style="width:${barPct}%"></div>
+        <div class="bar-fill" style="width:${barPct}%; background:var(--${status})"></div>
         <div class="bar-marker" style="left:${markerPct}%"></div>
         <div class="bar-marker-label" style="left:${markerPct}%">ritmo ${fmtPct(ritmoEsperado)}</div>
       </div>
@@ -641,6 +641,7 @@ const TRANSICAO_MS = 10000;     // duração do "salto" suave até a próxima p�
 let autoScrollIniciado = false;
 let paginasScroll = [0];
 let paginaAtual = 0;
+let direcaoPagina = 1; // 1 = avançando, -1 = voltando (vai e volta passando por todas, sem pular a do meio)
 let timerProximaPagina = null;
 
 // Páginas fixas por seção (não é mais cálculo automático por altura):
@@ -676,11 +677,16 @@ function agendarProximaPagina() {
 
 function avancarPagina() {
   paginasScroll = calcularPaginasScroll(); // recalcula sempre — conteúdo muda a cada atualização de dados
-  if (paginasScroll.length <= 1) {
+  const ultimoIndice = paginasScroll.length - 1;
+  if (ultimoIndice <= 0) {
     agendarProximaPagina();
     return;
   }
-  paginaAtual = (paginaAtual + 1) % paginasScroll.length;
+  // Vai e volta (1º → meio → último → meio → 1º → ...), nunca pula direto do último pro primeiro
+  if (paginaAtual + direcaoPagina > ultimoIndice || paginaAtual + direcaoPagina < 0) {
+    direcaoPagina *= -1;
+  }
+  paginaAtual += direcaoPagina;
   animarScrollPara(paginasScroll[paginaAtual], agendarProximaPagina);
 }
 
@@ -689,6 +695,7 @@ function iniciarAutoScroll() {
   autoScrollIniciado = true;
   paginasScroll = calcularPaginasScroll();
   paginaAtual = 0;
+  direcaoPagina = 1;
   window.scrollTo(0, 0);
   agendarProximaPagina();
 }
