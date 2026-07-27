@@ -54,18 +54,30 @@
   }
   body { transition: background-color .25s ease, color .25s ease; }
   * { box-sizing: border-box; }
+  html, body { height: 100%; }
   body {
     margin: 0;
     font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
     background: var(--bg);
     color: var(--texto);
     padding: 22px 32px 32px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
-  .header { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:18px; flex-wrap:wrap; gap:10px; }
+  .header { flex: none; display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:18px; flex-wrap:wrap; gap:10px; }
   .header .logo { height: 42px; width:auto; display:block; margin-bottom:6px; }
   .header .brand-sub { font-size:13px; font-weight:700; letter-spacing:.1em; color:var(--texto-sub); text-transform:uppercase; }
   .header .semana { font-size:26px; font-weight:800; margin-top:2px; }
   .header .meta-info { text-align:right; font-size:14px; color:var(--texto-sub); }
+  #conteudo { position:relative; flex:1 1 auto; min-height:0; }
+  .pagina {
+    position:absolute; inset:0; overflow-y:auto;
+    opacity:0; visibility:hidden;
+    transition: opacity .7s ease;
+  }
+  .pagina.pagina-ativa { opacity:1; visibility:visible; }
   .grid { display:grid; grid-template-columns: repeat(12, 1fr); gap:16px; }
   .card { background:var(--card-bg); border:1px solid var(--borda); border-radius:18px; padding:20px 24px; }
   .card-label { font-size:13px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--texto-sub); margin-bottom:10px; display:flex; align-items:center; gap:7px; }
@@ -198,8 +210,12 @@
     </div>
   </div>
 
-  <div id="conteudo" class="grid">
-    <div class="empty-msg" style="grid-column: span 12;">Carregando dados da planilha…</div>
+  <div id="conteudo">
+    <div class="pagina pagina-ativa">
+      <div class="grid">
+        <div class="empty-msg" style="grid-column: span 12;">Carregando dados da planilha…</div>
+      </div>
+    </div>
   </div>
 
 <script>
@@ -572,76 +588,91 @@ function render(dados) {
   const marcadoresProximos = Math.abs(projMarkerPct - markerPct) < 8;
 
   document.getElementById("conteudo").innerHTML = `
-    <div class="card hero">
-      <div class="hero-top">
-        <div>
-          <div class="card-label">Resultado semanal · time comercial (closer + gc)</div>
-          <div class="hero-num" style="color: var(--${status === 'vermelho' ? 'vermelho' : status === 'ambar' ? 'ambar' : 'verde'})">${fmtPct(pctAtual)}</div>
-          <div class="hero-sub">${fmtBRL(totalFat)} faturado de ${fmtBRL(totalMeta)} de meta semanal</div>
+    <div class="pagina" data-pagina="0">
+      <div class="grid">
+        <div class="card hero">
+          <div class="hero-top">
+            <div>
+              <div class="card-label">Resultado semanal · time comercial (closer + gc)</div>
+              <div class="hero-num" style="color: var(--${status === 'vermelho' ? 'vermelho' : status === 'ambar' ? 'ambar' : 'verde'})">${fmtPct(pctAtual)}</div>
+              <div class="hero-sub">${fmtBRL(totalFat)} faturado de ${fmtBRL(totalMeta)} de meta semanal</div>
+            </div>
+          </div>
+          <div class="bar-wrap">
+            <div class="bar-fill" style="width:${barPct}%; background:var(--${status})"></div>
+            <div class="bar-marker" style="left:${markerPct}%; z-index:1"></div>
+            <div class="bar-marker-label${marcadoresProximos ? ' bar-marker-label--alt' : ''}" style="left:${markerPct}%; z-index:1">Esperado Atual ${fmtPct(ritmoEsperado)}</div>
+            <div class="bar-marker" style="left:${projMarkerPct}%; background:var(--${statusProjecao}); z-index:2"></div>
+            <div class="bar-marker-label" style="left:${projMarkerPct}%; color:var(--${statusProjecao}); z-index:2">Projeção Semanal ${fmtPct(projecaoPct)}</div>
+          </div>
+          <div class="bar-legend"><span>0%</span><span>100% da meta</span></div>
+        </div>
+
+        <div class="card ladder">
+          <div class="card-label">🪜 Régua — quanto falta para bater cada patamar da meta</div>
+          <div class="ladder-row">${ladderHtml(totalMeta, totalFat)}</div>
+        </div>
+
+        <div class="card rank-card rank-card--destaque">
+          <div class="card-label"><span class="dot dot-dourado"></span> Top Closer (Inside Sales)</div>
+          <div class="group-total">
+            <div class="pct" style="color:var(--${closerStatus === 'vermelho' ? 'vermelho' : closerStatus === 'ambar' ? 'ambar' : 'verde'})">${fmtPct(closer.pct)}</div>
+            <div class="desc">${fmtBRL(closer.fat)} de ${fmtBRL(closer.meta)} de meta do grupo</div>
+          </div>
+          ${podiumHtml(closer.top3, "avatar-dourado")}
+        </div>
+
+        <div class="card rank-card rank-card--destaque">
+          <div class="card-label"><span class="dot dot-dourado"></span> Top GC (Gestão de Contas)</div>
+          <div class="group-total">
+            <div class="pct" style="color:var(--${gcStatus === 'vermelho' ? 'vermelho' : gcStatus === 'ambar' ? 'ambar' : 'verde'})">${fmtPct(gc.pct)}</div>
+            <div class="desc">${fmtBRL(gc.fat)} de ${fmtBRL(gc.meta)} de meta do grupo</div>
+          </div>
+          ${podiumHtml(gc.top3, "avatar-dourado")}
         </div>
       </div>
-      <div class="bar-wrap">
-        <div class="bar-fill" style="width:${barPct}%; background:var(--${status})"></div>
-        <div class="bar-marker" style="left:${markerPct}%; z-index:1"></div>
-        <div class="bar-marker-label${marcadoresProximos ? ' bar-marker-label--alt' : ''}" style="left:${markerPct}%; z-index:1">Esperado Atual ${fmtPct(ritmoEsperado)}</div>
-        <div class="bar-marker" style="left:${projMarkerPct}%; background:var(--${statusProjecao}); z-index:2"></div>
-        <div class="bar-marker-label" style="left:${projMarkerPct}%; color:var(--${statusProjecao}); z-index:2">Projeção Semanal ${fmtPct(projecaoPct)}</div>
+    </div>
+
+    <div class="pagina" data-pagina="1">
+      <div class="grid">
+        <div class="subcards-grid-topo">
+          ${CATEGORIAS_TOPO.map(cat => subCardHtml(cat, vendedores, ritmoEsperado, "grande")).join("")}
+        </div>
+        <div class="subcards-wrap">
+          ${CATEGORIAS_FARMERS.map(cat => subCardHtml(cat, vendedores, ritmoEsperado, "media")).join("")}
+        </div>
+        <div class="subcards-wrap">
+          ${CATEGORIAS_RESTO.map(cat => subCardHtml(cat, vendedores, ritmoEsperado, "grande")).join("")}
+        </div>
       </div>
-      <div class="bar-legend"><span>0%</span><span>100% da meta</span></div>
     </div>
 
-    <div class="card ladder">
-      <div class="card-label">🪜 Régua — quanto falta para bater cada patamar da meta</div>
-      <div class="ladder-row">${ladderHtml(totalMeta, totalFat)}</div>
-    </div>
+    <div class="pagina" data-pagina="2">
+      <div class="grid">
+        <div class="card chart-card">
+          <div class="card-label"><span class="dot dot-azul"></span> % da meta individual — Closer (Falcons + Stark)</div>
+          <div class="chart-wrap"><canvas id="chartCloser"></canvas></div>
+        </div>
 
-    <div class="card rank-card rank-card--destaque">
-      <div class="card-label"><span class="dot dot-dourado"></span> Top Closer (Inside Sales)</div>
-      <div class="group-total">
-        <div class="pct" style="color:var(--${closerStatus === 'vermelho' ? 'vermelho' : closerStatus === 'ambar' ? 'ambar' : 'verde'})">${fmtPct(closer.pct)}</div>
-        <div class="desc">${fmtBRL(closer.fat)} de ${fmtBRL(closer.meta)} de meta do grupo</div>
+        <div class="card chart-card">
+          <div class="card-label"><span class="dot dot-dourado"></span> % da meta individual — GC (Maverick + Nexus)</div>
+          <div class="chart-wrap"><canvas id="chartGC"></canvas></div>
+        </div>
+
+        <div class="footer">
+          Fonte: aba "Cópia de Gráfico Semanal TV - Premium" via Apps Script · atualiza a cada ~10 min ·
+          Falcons/Stark = squads Closer (Inside Sales) · Maverick/Nexus = squads GC (Gestão de Contas) ·
+          Squads TUBA/SUPERNOVA/BIGBANG excluídos (inativos na semana)
+        </div>
       </div>
-      ${podiumHtml(closer.top3, "avatar-dourado")}
-    </div>
-
-    <div class="card rank-card rank-card--destaque">
-      <div class="card-label"><span class="dot dot-dourado"></span> Top GC (Gestão de Contas)</div>
-      <div class="group-total">
-        <div class="pct" style="color:var(--${gcStatus === 'vermelho' ? 'vermelho' : gcStatus === 'ambar' ? 'ambar' : 'verde'})">${fmtPct(gc.pct)}</div>
-        <div class="desc">${fmtBRL(gc.fat)} de ${fmtBRL(gc.meta)} de meta do grupo</div>
-      </div>
-      ${podiumHtml(gc.top3, "avatar-dourado")}
-    </div>
-
-    <div class="subcards-grid-topo">
-      ${CATEGORIAS_TOPO.map(cat => subCardHtml(cat, vendedores, ritmoEsperado, "grande")).join("")}
-    </div>
-    <div class="subcards-wrap">
-      ${CATEGORIAS_FARMERS.map(cat => subCardHtml(cat, vendedores, ritmoEsperado, "media")).join("")}
-    </div>
-    <div class="subcards-wrap">
-      ${CATEGORIAS_RESTO.map(cat => subCardHtml(cat, vendedores, ritmoEsperado, "grande")).join("")}
-    </div>
-
-    <div class="card chart-card">
-      <div class="card-label"><span class="dot dot-azul"></span> % da meta individual — Closer (Falcons + Stark)</div>
-      <div class="chart-wrap"><canvas id="chartCloser"></canvas></div>
-    </div>
-
-    <div class="card chart-card">
-      <div class="card-label"><span class="dot dot-dourado"></span> % da meta individual — GC (Maverick + Nexus)</div>
-      <div class="chart-wrap"><canvas id="chartGC"></canvas></div>
-    </div>
-
-    <div class="footer">
-      Fonte: aba "Cópia de Gráfico Semanal TV - Premium" via Apps Script · atualiza a cada ~10 min ·
-      Falcons/Stark = squads Closer (Inside Sales) · Maverick/Nexus = squads GC (Gestão de Contas) ·
-      Squads TUBA/SUPERNOVA/BIGBANG excluídos (inativos na semana)
     </div>
   `;
 
   desenharGrafico("chartCloser", (c) => { chartCloser = c; }, chartCloser, closer.todos, ritmoEsperado);
   desenharGrafico("chartGC", (c) => { chartGC = c; }, chartGC, gc.todos, ritmoEsperado);
+
+  // Reaplica qual página está visível (o innerHTML acima recria os nós, então perde a classe a cada refresh de dado/tema)
+  mostrarPagina(paginaAtual);
 }
 
 function jsonpRequest(url) {
@@ -685,82 +716,66 @@ async function carregarDados() {
     // Só mostra a tela de erro se ainda não tiver nenhum dado carregado antes —
     // assim uma falha passageira não apaga um painel que já estava funcionando.
     if (!ultimoDados) {
-      document.getElementById("conteudo").innerHTML = `<div class="empty-msg" style="grid-column:span 12;">
-        Erro ao carregar dados: ${e.message || e}<br>
-        Verifique se a URL do Apps Script está correta e se o deploy está com acesso "Qualquer pessoa".
-      </div>`;
+      document.getElementById("conteudo").innerHTML = `
+        <div class="pagina pagina-ativa">
+          <div class="grid">
+            <div class="empty-msg" style="grid-column:span 12;">
+              Erro ao carregar dados: ${e.message || e}<br>
+              Verifique se a URL do Apps Script está correta e se o deploy está com acesso "Qualquer pessoa".
+            </div>
+          </div>
+        </div>`;
     }
     console.error("Erro ao carregar painel:", e);
     setTimeout(carregarDados, 30000); // tenta de novo em 30s, não espera os 10 min do ciclo normal
   }
 }
 
-// ===== Auto-scroll por "páginas": nunca para com um card cortado =====
-// Em vez de rolar pixel a pixel contínuo, calcula os pontos onde cada linha
-// de cards termina e só pausa exatamente nessas bordas — cada pausa mostra
-// só cards inteiros. A transição entre páginas é rápida (não é o momento de leitura).
-const PAUSA_PAGINA_MS = 20000;  // quanto tempo fica parado em cada página (tempo de leitura)
-const TRANSICAO_MS = 10000;     // duração do "salto" suave até a próxima página
+// ===== Paginação por fade: 3 páginas fixas, cada uma com seu próprio tempo de exibição =====
+// Página 1 (índice 0) = topo + Top Closer/Top GC · Página 2 (índice 1) = sub cards de perfil ·
+// Página 3 (índice 2) = os dois gráficos individuais.
+// Nunca rola: cada página ocupa a tela inteira e a troca é um fade suave.
+const DURACOES_PAGINA_MS = [15000, 30000, 20000]; // tempo de exibição de cada página, nessa ordem
+const FADE_MS = 700; // duração do fade entre páginas (bate com a transição do CSS .pagina)
 
-let autoScrollIniciado = false;
-let paginasScroll = [0];
+let autoPaginacaoIniciada = false;
 let paginaAtual = 0;
 let direcaoPagina = 1; // 1 = avançando, -1 = voltando (vai e volta passando por todas, sem pular a do meio)
 let timerProximaPagina = null;
 
-// Páginas fixas por seção (não é mais cálculo automático por altura):
-// Página 1 = topo até os cards Top Closer/Top GC · Página 2 = sub cards de perfil ·
-// Página 3 = os dois gráficos individuais.
-function calcularPaginasScroll() {
-  const container = document.getElementById("conteudo");
-  if (!container) return [0];
-  const subcards = container.querySelector(".subcards-grid-topo");
-  const primeiroGrafico = container.querySelector(".chart-card");
-  const paginas = [0];
-  if (subcards) paginas.push(subcards.offsetTop);
-  if (primeiroGrafico) paginas.push(primeiroGrafico.offsetTop);
-  return paginas;
-}
-
-function animarScrollPara(destino, aoTerminar) {
-  const origem = window.scrollY;
-  const inicioMs = Date.now();
-  function passo() {
-    const t = Math.min((Date.now() - inicioMs) / TRANSICAO_MS, 1);
-    window.scrollTo(0, origem + (destino - origem) * t);
-    if (t < 1) requestAnimationFrame(passo);
-    else if (aoTerminar) aoTerminar();
-  }
-  requestAnimationFrame(passo);
+function mostrarPagina(indice) {
+  const paginas = document.querySelectorAll("#conteudo .pagina");
+  paginas.forEach((p, i) => p.classList.toggle("pagina-ativa", i === indice));
 }
 
 function agendarProximaPagina() {
   clearTimeout(timerProximaPagina);
-  timerProximaPagina = setTimeout(avancarPagina, PAUSA_PAGINA_MS);
+  const duracao = DURACOES_PAGINA_MS[paginaAtual] ?? 20000;
+  timerProximaPagina = setTimeout(avancarPagina, duracao);
 }
 
 function avancarPagina() {
-  paginasScroll = calcularPaginasScroll(); // recalcula sempre — conteúdo muda a cada atualização de dados
-  const ultimoIndice = paginasScroll.length - 1;
+  const totalPaginas = document.querySelectorAll("#conteudo .pagina").length;
+  const ultimoIndice = totalPaginas - 1;
   if (ultimoIndice <= 0) {
     agendarProximaPagina();
     return;
   }
-  // Vai e volta (1º → meio → último → meio → 1º → ...), nunca pula direto do último pro primeiro
+  // Vai e volta (1ª → meio → última → meio → 1ª → ...), nunca pula direto da última pra primeira
   if (paginaAtual + direcaoPagina > ultimoIndice || paginaAtual + direcaoPagina < 0) {
     direcaoPagina *= -1;
   }
   paginaAtual += direcaoPagina;
-  animarScrollPara(paginasScroll[paginaAtual], agendarProximaPagina);
+  mostrarPagina(paginaAtual);
+  agendarProximaPagina();
 }
 
-function iniciarAutoScroll() {
-  if (autoScrollIniciado) return;
-  autoScrollIniciado = true;
-  paginasScroll = calcularPaginasScroll();
+function iniciarAutoPaginacao() {
+  if (autoPaginacaoIniciada) return;
+  autoPaginacaoIniciada = true;
   paginaAtual = 0;
   direcaoPagina = 1;
-  window.scrollTo(0, 0);
+  mostrarPagina(0);
   agendarProximaPagina();
 }
 
@@ -772,7 +787,7 @@ function iniciarAutoScroll() {
 
 carregarDados();
 setInterval(carregarDados, REFRESH_MS);
-setTimeout(iniciarAutoScroll, 1500); // dá tempo do primeiro carregamento renderizar antes de começar a rolar
+setTimeout(iniciarAutoPaginacao, 1500); // dá tempo do primeiro carregamento renderizar antes de começar a paginar
 </script>
 
 </body>
