@@ -54,7 +54,7 @@
   }
   body { transition: background-color .25s ease, color .25s ease; }
   * { box-sizing: border-box; }
-  html, body { height: 100%; }
+  html, body { height: 100%; overflow: hidden; }
   body {
     margin: 0;
     font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
@@ -71,7 +71,7 @@
   .header .brand-sub { font-size:13px; font-weight:700; letter-spacing:.1em; color:var(--texto-sub); text-transform:uppercase; }
   .header .semana { font-size:26px; font-weight:800; margin-top:2px; }
   .header .meta-info { text-align:right; font-size:14px; color:var(--texto-sub); }
-  #conteudo { position:relative; flex:1 1 auto; min-height:0; }
+  #conteudo { position:relative; flex:1 1 auto; min-height:0; overflow:hidden; }
   .pagina {
     position:absolute; inset:0; overflow:hidden;
     opacity:0; visibility:hidden;
