@@ -148,8 +148,8 @@
   .subcard-row--alerta { border-color:var(--vermelho); background:var(--vermelho-bg); }
   .subcard-avatar { position:relative; overflow:hidden; width:26px; height:26px; border-radius:50%; background:var(--cinza-bg); color:var(--texto); font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
   .subcard-avatar img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:50%; }
-  .subcard-nome { font-size:13px; font-weight:600; width:120px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex-shrink:0; }
-  .subcard-bar-wrap { flex:1; height:10px; background:var(--cinza-bg); border-radius:999px; overflow:hidden; }
+  .subcard-nome { flex:1 1 auto; min-width:0; font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .subcard-bar-wrap { flex:0 0 auto; height:10px; background:var(--cinza-bg); border-radius:999px; overflow:hidden; }
   .subcard-bar-fill { height:100%; border-radius:999px; }
   .subcard-pct { font-size:13px; font-weight:800; width:56px; text-align:right; flex-shrink:0; }
 
@@ -164,21 +164,21 @@
   .subcards-grid-topo > .subcard:nth-child(2) { grid-column: 2; grid-row: 1 / span 2; }
   .subcards-grid-topo > .subcard:nth-child(3) { grid-column: 3; grid-row: 1; }
   .subcards-grid-topo > .subcard:nth-child(4) { grid-column: 3; grid-row: 2; }
-  .subcard--grande { min-width:0; padding:16px 18px; }
-  .subcard--grande .subcard-title { font-size:14px; margin-bottom:9px; }
-  .subcard--grande .subcard-row { gap:10px; margin-bottom:7px; }
-  .subcard--grande .subcard-avatar { width:30px; height:30px; font-size:13px; }
-  .subcard--grande .subcard-nome { font-size:16px; width:220px; }
+  .subcard--grande { min-width:0; padding:14px 16px; }
+  .subcard--grande .subcard-title { font-size:14px; margin-bottom:7px; }
+  .subcard--grande .subcard-row { gap:10px; margin-bottom:5px; }
+  .subcard--grande .subcard-avatar { width:38px; height:38px; font-size:15px; }
+  .subcard--grande .subcard-nome { font-size:19px; min-width:120px; }
   .subcard--grande .subcard-bar-wrap { flex:0 0 120px; height:11px; }
-  .subcard--grande .subcard-pct { font-size:16px; width:62px; }
+  .subcard--grande .subcard-pct { font-size:18px; width:66px; }
 
-  .subcard--media { min-width:0; padding:12px 14px; }
-  .subcard--media .subcard-title { font-size:12px; margin-bottom:7px; }
-  .subcard--media .subcard-row { gap:8px; margin-bottom:6px; }
-  .subcard--media .subcard-avatar { width:22px; height:22px; font-size:10px; }
-  .subcard--media .subcard-nome { font-size:13px; width:140px; }
+  .subcard--media { min-width:0; padding:10px 12px; }
+  .subcard--media .subcard-title { font-size:12px; margin-bottom:6px; }
+  .subcard--media .subcard-row { gap:8px; margin-bottom:5px; }
+  .subcard--media .subcard-avatar { width:28px; height:28px; font-size:12px; }
+  .subcard--media .subcard-nome { font-size:15px; min-width:90px; }
   .subcard--media .subcard-bar-wrap { flex:0 0 80px; height:8px; }
-  .subcard--media .subcard-pct { font-size:13px; width:46px; }
+  .subcard--media .subcard-pct { font-size:14px; width:48px; }
   .footer { grid-column: span 12; font-size:12px; color:var(--texto-sub); text-align:center; margin-top:6px; }
   .empty-msg { padding:44px; text-align:center; color:var(--texto-sub); }
   .theme-toggle {
@@ -275,20 +275,19 @@ function avatarHtml(nome, avatarClass, baseClass) {
     ${getInitials(nome)}
   </div>`;
 }
-// Calcula em que dia útil da semana comercial estamos e quantos dias já estão "maduros"
-// (fechados) pra servir de base da projeção.
+// Calcula em que dia útil da semana comercial estamos, pra servir de base da projeção
+// (faturado até agora ÷ esse número de dias × 5 dias úteis).
 // Regra do negócio: semana vai de sexta a quinta (fechamento); sábado e domingo não são
-// dias à parte, o resultado deles entra na conta de sexta (dia 1). Cada dia fecha às 23:59,
-// mas só passa a contar como dia completo pro cálculo de ritmo às 09:00 da manhã seguinte
-// (dá tempo de lançamento tardio/backoffice consolidar o dia anterior antes de usá-lo na média).
+// dias à parte, o resultado deles entra na conta de sexta (dia 1). O dia comercial vira
+// às 09:00 da manhã (não à meia-noite) — até lá, ainda conta como o dia anterior, dando
+// tempo de lançamento tardio/backoffice consolidar o dia anterior antes de usá-lo na média.
 function calcularDiaComercial() {
   const agora = new Date();
+  const referencia = new Date(agora);
+  if (agora.getHours() < 9) referencia.setDate(referencia.getDate() - 1); // antes das 9h, ainda é "ontem" pra essa conta
   const mapaSlot = { 5: 1, 6: 1, 0: 1, 1: 2, 2: 3, 3: 4, 4: 5 }; // getDay(): dom0 seg1 ter2 qua3 qui4 sex5 sab6
-  const diaAtual = mapaSlot[agora.getDay()];
-  let diasCompletos = diaAtual - 1;
-  if (agora.getHours() < 9) diasCompletos -= 1; // antes das 9h, o dia anterior ainda não "maturou"
-  diasCompletos = Math.max(diasCompletos, 0);
-  return { diaAtual, diasCompletos };
+  const diaAtual = mapaSlot[referencia.getDay()];
+  return { diaAtual, diasCompletos: diaAtual };
 }
 // Tira o código numérico do início (ex: "072026 SEMANA 4 (JUL)" -> "SEMANA 4 (JUL)")
 function limparSemanaLabel(label) {
