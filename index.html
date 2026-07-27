@@ -256,6 +256,21 @@ function avatarHtml(nome, avatarClass) {
     ${getInitials(nome)}
   </div>`;
 }
+// Calcula em que dia útil da semana comercial estamos e quantos dias já estão "maduros"
+// (fechados) pra servir de base da projeção.
+// Regra do negócio: semana vai de sexta a quinta (fechamento); sábado e domingo não são
+// dias à parte, o resultado deles entra na conta de sexta (dia 1). Cada dia fecha às 23:59,
+// mas só passa a contar como dia completo pro cálculo de ritmo às 09:00 da manhã seguinte
+// (dá tempo de lançamento tardio/backoffice consolidar o dia anterior antes de usá-lo na média).
+function calcularDiaComercial() {
+  const agora = new Date();
+  const mapaSlot = { 5: 1, 6: 1, 0: 1, 1: 2, 2: 3, 3: 4, 4: 5 }; // getDay(): dom0 seg1 ter2 qua3 qui4 sex5 sab6
+  const diaAtual = mapaSlot[agora.getDay()];
+  let diasCompletos = diaAtual - 1;
+  if (agora.getHours() < 9) diasCompletos -= 1; // antes das 9h, o dia anterior ainda não "maturou"
+  diasCompletos = Math.max(diasCompletos, 0);
+  return { diaAtual, diasCompletos };
+}
 // Tira o código numérico do início (ex: "072026 SEMANA 4 (JUL)" -> "SEMANA 4 (JUL)")
 function limparSemanaLabel(label) {
   const s = String(label || "");
@@ -524,13 +539,14 @@ function desenharGrafico(canvasId, chartRefSetter, chartRefAtual, vendedores, ri
 function render(dados) {
   ultimoDados = dados;
   const diasUteisSemana = 5;
-  const { semanaLabel, dia, ritmoEsperado, vendedores, totalMeta, totalFat } = dados;
+  const { semanaLabel, ritmoEsperado, vendedores, totalMeta, totalFat } = dados;
+  const { diaAtual, diasCompletos } = calcularDiaComercial();
   const pctAtual = totalMeta > 0 ? totalFat / totalMeta : 0;
   const ratio = ritmoEsperado > 0 ? pctAtual / ritmoEsperado : 1;
   const status = statusFromRatio(ratio);
 
   document.getElementById("semanaLabel").textContent = limparSemanaLabel(semanaLabel) || "Semana comercial";
-  document.getElementById("diaLabel").textContent = dia ? `Dia ${dia} de ${diasUteisSemana} da semana` : "";
+  document.getElementById("diaLabel").textContent = `Dia ${diaAtual} de ${diasUteisSemana} da semana`;
   document.getElementById("atualizadoLabel").textContent = "última leitura: " + new Date().toLocaleString("pt-BR");
 
   const closer = groupStats(vendedores, CLOSER_SQUADS);
@@ -541,8 +557,9 @@ function render(dados) {
   const barPct = Math.min(pctAtual * 100, 100);
   const markerPct = Math.min((ritmoEsperado || 0) * 100, 100);
 
-  // Projeção: no ritmo atual (faturado ÷ dias já passados), quanto deve fechar até o fim da semana.
-  const projecaoFat = dia > 0 ? (totalFat / dia) * diasUteisSemana : totalFat;
+  // Projeção: no ritmo dos dias já maduros (fechados até 09:00 de hoje), quanto deve fechar até o fim da semana.
+  // O dia em andamento nunca entra no divisor — só passa a contar a partir das 09:00 do dia seguinte.
+  const projecaoFat = diasCompletos > 0 ? (totalFat / diasCompletos) * diasUteisSemana : totalFat;
   const projecaoPct = totalMeta > 0 ? projecaoFat / totalMeta : 0;
   const statusProjecao = statusFromRatio(projecaoPct);
   const projMarkerPct = Math.min(projecaoPct * 100, 100);
