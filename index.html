@@ -131,9 +131,11 @@
   .subcards-wrap { grid-column: span 12; display:flex; flex-wrap:wrap; align-items:flex-start; gap:16px; }
   .subcard { flex:1 1 240px; min-width:240px; background:var(--card-bg); border:1px solid var(--borda); border-radius:16px; padding:18px 20px; }
   .subcard-title { font-size:14px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--texto-sub); margin-bottom:13px; }
-  .subcard-row { display:flex; align-items:center; gap:11px; margin-bottom:12px; }
+  .subcard-row { display:flex; align-items:center; gap:11px; margin-bottom:12px; padding:6px 8px; border-radius:10px; border:2px solid transparent; }
   .subcard-row:last-child { margin-bottom:0; }
-  .subcard-avatar { width:30px; height:30px; border-radius:50%; background:var(--cinza-bg); color:var(--texto); font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .subcard-row--alerta { border-color:var(--vermelho); background:var(--vermelho-bg); }
+  .subcard-avatar { position:relative; overflow:hidden; width:30px; height:30px; border-radius:50%; background:var(--cinza-bg); color:var(--texto); font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .subcard-avatar img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:50%; }
   .subcard-nome { font-size:15px; font-weight:600; width:130px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex-shrink:0; }
   .subcard-bar-wrap { flex:1; height:12px; background:var(--cinza-bg); border-radius:999px; overflow:hidden; }
   .subcard-bar-fill { height:100%; border-radius:999px; }
@@ -248,10 +250,11 @@ function fotoAttrOnerror(idx) {
     else { this.remove(); }
   "`;
 }
-function avatarHtml(nome, avatarClass) {
+function avatarHtml(nome, avatarClass, baseClass) {
   const slug = slugFoto(nome);
   const base = "fotos/" + slug;
-  return `<div class="avatar ${avatarClass}">
+  const classes = (baseClass || "avatar") + (avatarClass ? " " + avatarClass : "");
+  return `<div class="${classes}">
     <img src="${base}.${EXT_FOTOS[0]}" data-base="${base}" alt="" ${fotoAttrOnerror(0)}>
     ${getInitials(nome)}
   </div>`;
@@ -445,9 +448,10 @@ function subCardHtml(categoria, todosVendedores, ritmoEsperado, variante) {
     const status = statusFromRatio(ratio);
     const cor = "var(--" + status + ")";
     const largura = Math.max((v.pct / maxPct) * 100, 3);
+    const emAlerta = status === "vermelho";
     return `
-      <div class="subcard-row">
-        <div class="subcard-avatar">${getInitials(v.nome)}</div>
+      <div class="subcard-row${emAlerta ? ' subcard-row--alerta' : ''}">
+        ${avatarHtml(v.nome, "", "subcard-avatar")}
         <div class="subcard-nome" title="${v.nome}">${v.nome}</div>
         <div class="subcard-bar-wrap"><div class="subcard-bar-fill" style="width:${largura}%; background:${cor}"></div></div>
         <div class="subcard-pct">${fmtPct(v.pct)}</div>
