@@ -164,21 +164,21 @@
   .subcards-grid-topo > .subcard:nth-child(2) { grid-column: 2; grid-row: 1 / span 2; }
   .subcards-grid-topo > .subcard:nth-child(3) { grid-column: 3; grid-row: 1; }
   .subcards-grid-topo > .subcard:nth-child(4) { grid-column: 3; grid-row: 2; }
-  .subcard--grande { min-width:0; padding:14px 16px; }
-  .subcard--grande .subcard-title { font-size:14px; margin-bottom:7px; }
-  .subcard--grande .subcard-row { gap:10px; margin-bottom:5px; }
-  .subcard--grande .subcard-avatar { width:38px; height:38px; font-size:15px; }
-  .subcard--grande .subcard-nome { font-size:19px; min-width:120px; }
+  .subcard--grande { min-width:0; padding:12px 14px; }
+  .subcard--grande .subcard-title { font-size:14px; margin-bottom:6px; }
+  .subcard--grande .subcard-row { gap:10px; margin-bottom:4px; }
+  .subcard--grande .subcard-avatar { width:44px; height:44px; font-size:17px; }
+  .subcard--grande .subcard-nome { font-size:22px; min-width:120px; }
   .subcard--grande .subcard-bar-wrap { flex:0 0 120px; height:11px; }
-  .subcard--grande .subcard-pct { font-size:18px; width:66px; }
+  .subcard--grande .subcard-pct { font-size:20px; width:72px; }
 
-  .subcard--media { min-width:0; padding:10px 12px; }
-  .subcard--media .subcard-title { font-size:12px; margin-bottom:6px; }
-  .subcard--media .subcard-row { gap:8px; margin-bottom:5px; }
-  .subcard--media .subcard-avatar { width:28px; height:28px; font-size:12px; }
-  .subcard--media .subcard-nome { font-size:15px; min-width:90px; }
+  .subcard--media { min-width:0; padding:8px 10px; }
+  .subcard--media .subcard-title { font-size:12px; margin-bottom:5px; }
+  .subcard--media .subcard-row { gap:8px; margin-bottom:4px; }
+  .subcard--media .subcard-avatar { width:32px; height:32px; font-size:13px; }
+  .subcard--media .subcard-nome { font-size:17px; min-width:90px; }
   .subcard--media .subcard-bar-wrap { flex:0 0 80px; height:8px; }
-  .subcard--media .subcard-pct { font-size:14px; width:48px; }
+  .subcard--media .subcard-pct { font-size:15px; width:50px; }
   .footer { grid-column: span 12; font-size:12px; color:var(--texto-sub); text-align:center; margin-top:6px; }
   .empty-msg { padding:44px; text-align:center; color:var(--texto-sub); }
   .theme-toggle {
@@ -734,7 +734,7 @@ async function carregarDados() {
 // Página 1 (índice 0) = topo + Top Closer/Top GC · Página 2 (índice 1) = sub cards de perfil ·
 // Página 3 (índice 2) = os dois gráficos individuais.
 // Nunca rola: cada página ocupa a tela inteira e a troca é um fade suave.
-const DURACOES_PAGINA_MS = [15000, 30000, 20000]; // tempo de exibição de cada página, nessa ordem
+const DURACOES_PAGINA_MS = [15000, 60000, 20000]; // tempo de exibição de cada página, nessa ordem
 const FADE_MS = 700; // duração do fade entre páginas (bate com a transição do CSS .pagina)
 
 let autoPaginacaoIniciada = false;
