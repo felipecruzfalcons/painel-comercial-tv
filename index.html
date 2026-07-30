@@ -673,6 +673,29 @@ function render(dados) {
 
   // Reaplica qual página está visível (o innerHTML acima recria os nós, então perde a classe a cada refresh de dado/tema)
   mostrarPagina(paginaAtual);
+  // Encolhe sozinho qualquer página cujo conteúdo tenha ficado mais alto que a tela —
+  // nunca mais corta uma linha, mesmo quando entram novos consultores/categorias.
+  ajustarEscalaDasPaginas();
+}
+
+// Se o conteúdo de uma página não couber na altura disponível, aplica um zoom-out
+// proporcional (largura e altura juntas) até caber por completo, sem distorcer nada.
+function ajustarEscalaPagina(paginaEl) {
+  const grid = paginaEl.querySelector(":scope > .grid");
+  if (!grid) return;
+  grid.style.transform = "";
+  grid.style.width = "";
+  const alturaDisponivel = paginaEl.clientHeight;
+  const alturaConteudo = grid.scrollHeight;
+  if (alturaDisponivel > 0 && alturaConteudo > alturaDisponivel) {
+    const fator = alturaDisponivel / alturaConteudo;
+    grid.style.transformOrigin = "top left";
+    grid.style.width = (100 / fator) + "%";
+    grid.style.transform = `scale(${fator})`;
+  }
+}
+function ajustarEscalaDasPaginas() {
+  document.querySelectorAll("#conteudo .pagina").forEach(ajustarEscalaPagina);
 }
 
 function jsonpRequest(url) {
