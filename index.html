@@ -76,8 +76,10 @@
     position:absolute; inset:0; overflow:hidden;
     opacity:0; visibility:hidden;
     transition: opacity .7s ease;
+    display:flex; flex-direction:column; justify-content:center;
   }
   .pagina.pagina-ativa { opacity:1; visibility:visible; }
+  .pagina > .grid { width:100%; flex-shrink:0; }
   .grid { display:grid; grid-template-columns: repeat(12, 1fr); gap:16px; }
   .card { background:var(--card-bg); border:1px solid var(--borda); border-radius:18px; padding:20px 24px; }
   .card-label { font-size:13px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--texto-sub); margin-bottom:10px; display:flex; align-items:center; gap:7px; }
@@ -141,18 +143,19 @@
   .chart-card { grid-column: span 12; }
   .chart-wrap { position:relative; height:320px; }
   .subcards-wrap { grid-column: span 12; display:flex; flex-wrap:wrap; align-items:stretch; gap:12px; }
-  .subcard { flex:1 1 240px; min-width:240px; background:var(--card-bg); border:1px solid var(--borda); border-radius:16px; padding:14px 16px; display:flex; flex-direction:column; }
+  .subcard { flex:1 1 240px; min-width:240px; max-width:100%; overflow:hidden; background:var(--card-bg); border:1px solid var(--borda); border-radius:16px; padding:14px 16px; display:flex; flex-direction:column; }
   .subcard-title { font-size:13px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--texto-sub); margin-bottom:8px; }
-  .subcard-row { display:flex; align-items:center; gap:9px; margin-bottom:7px; padding:3px 5px; border-radius:8px; border:2px solid transparent; }
+  .subcard-row { display:flex; align-items:center; gap:9px; margin-bottom:7px; padding:3px 5px; border-radius:8px; border:2px solid transparent; max-width:100%; }
   .subcard-row:last-child { margin-bottom:0; }
   .subcard-row--alerta { border-color:var(--vermelho); background:var(--vermelho-bg); }
   .subcard-avatar { position:relative; overflow:hidden; width:26px; height:26px; border-radius:50%; background:var(--cinza-bg); color:var(--texto); font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
   .subcard-avatar img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:50%; }
-  .subcard-nome { flex:1 1 auto; min-width:0; font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  /* Nome nunca corta com "..." — se não couber numa linha, quebra pra segunda linha inteiro. */
+  .subcard-nome { flex:1 1 auto; min-width:0; font-size:13px; font-weight:600; white-space:normal; overflow-wrap:break-word; line-height:1.15; }
   .subcard-bar-wrap { flex:0 0 auto; height:10px; background:var(--cinza-bg); border-radius:999px; overflow:hidden; }
-  .subcard-bar-fill { height:100%; border-radius:999px; }
+  .subcard-bar-fill { height:100%; border-radius:999px; max-width:100%; }
   .subcard-pct { font-size:13px; font-weight:800; width:56px; text-align:right; flex-shrink:0; }
-  .subcard-rows { flex:1 1 auto; display:flex; flex-direction:column; justify-content:center; }
+  .subcard-rows { flex:1 1 auto; display:flex; flex-direction:column; justify-content:center; min-width:0; }
 
   .subcards-grid-topo {
     grid-column: span 12;
@@ -162,21 +165,21 @@
     margin-top: 10px;
   }
   .subcards-grid-topo > .subcard { flex:1 1 0; min-width:0; }
-  .subcard--grande { min-width:0; padding:16px 18px; }
-  .subcard--grande .subcard-title { font-size:15px; margin-bottom:12px; }
-  .subcard--grande .subcard-row { gap:12px; margin-bottom:10px; }
-  .subcard--grande .subcard-avatar { width:48px; height:48px; font-size:18px; }
-  .subcard--grande .subcard-nome { font-size:24px; min-width:120px; }
-  .subcard--grande .subcard-bar-wrap { flex:0 0 160px; height:12px; }
-  .subcard--grande .subcard-pct { font-size:22px; width:78px; }
+  .subcard--grande { min-width:0; padding:14px 16px; }
+  .subcard--grande .subcard-title { font-size:14px; margin-bottom:10px; }
+  .subcard--grande .subcard-row { gap:10px; margin-bottom:8px; }
+  .subcard--grande .subcard-avatar { width:42px; height:42px; font-size:16px; }
+  .subcard--grande .subcard-nome { font-size:19px; }
+  .subcard--grande .subcard-bar-wrap { flex:1 1 70px; min-width:44px; max-width:110px; height:11px; }
+  .subcard--grande .subcard-pct { font-size:18px; width:64px; }
 
-  .subcard--media { min-width:0; padding:10px 12px; }
-  .subcard--media .subcard-title { font-size:12px; margin-bottom:8px; }
-  .subcard--media .subcard-row { gap:8px; margin-bottom:6px; }
-  .subcard--media .subcard-avatar { width:34px; height:34px; font-size:14px; }
-  .subcard--media .subcard-nome { font-size:18px; min-width:90px; }
-  .subcard--media .subcard-bar-wrap { flex:0 0 100px; height:9px; }
-  .subcard--media .subcard-pct { font-size:16px; width:52px; }
+  .subcard--media { min-width:0; padding:9px 11px; }
+  .subcard--media .subcard-title { font-size:12px; margin-bottom:7px; }
+  .subcard--media .subcard-row { gap:7px; margin-bottom:5px; }
+  .subcard--media .subcard-avatar { width:30px; height:30px; font-size:12px; }
+  .subcard--media .subcard-nome { font-size:14px; }
+  .subcard--media .subcard-bar-wrap { flex:1 1 50px; min-width:34px; max-width:80px; height:8px; }
+  .subcard--media .subcard-pct { font-size:13px; width:46px; }
   .footer { grid-column: span 12; font-size:12px; color:var(--texto-sub); text-align:center; margin-top:6px; }
   .empty-msg { padding:44px; text-align:center; color:var(--texto-sub); }
   .theme-toggle {
@@ -423,8 +426,8 @@ function podiumHtml(top3, avatarClass) {
 // ===== Perfis de venda (categorias definidas pelo Felipe, independentes de squad) =====
 // Layout em 3 linhas: grandes (30+/50+/300+) > hunter+farmers > resto (preenche o espaço)
 const CATEGORIAS_TOPO = [
-  { nome: "30+", membros: ["PAULO SERGIO", "VICTOR VARELA", "VICTOR BRITO", "GIOVANI AUGUSTO"] },
-  { nome: "50+", membros: ["EMILY DANTAS", "CAMILLA MARINHO", "JAILTON", "CAIO TARGINO", "IGOR NEVES", "HADYJA SARAIVA", "LUCAS SANTOS", "ALEXSANDRA WHENDELL"] },
+  { nome: "30+", membros: ["PAULO SERGIO", "VICTOR VARELA", "GIOVANI AUGUSTO"] },
+  { nome: "50+", membros: ["EMILY DANTAS", "CAMILLA MARINHO", "JAILTON", "CAIO TARGINO", "IGOR NEVES", "VICTOR BRITO", "LUCAS SANTOS", "ALEXSANDRA WHENDELL"] },
   { nome: "300+", membros: ["SABRINA SILVA", "EMANUEL PEREIRA"] },
   { nome: "Hunter Reativação", membros: ["TAYNARA SOARES", "VICTOR MEDEIROS", "GABRIEL VINICIUS"] }
 ];
@@ -692,10 +695,12 @@ function render(dados) {
   ajustarEscalaDasPaginas();
 }
 
-// Ajusta a escala de cada página pra ocupar o máximo possível da tela: encolhe se o
-// conteúdo não couber (nunca corta uma linha) e AMPLIA se o conteúdo for menor que a
-// tela disponível (evita página "murcha" com fundo vazio sobrando embaixo).
-// Sempre proporcional (largura e altura juntas via transform), então nada distorce.
+// Se o conteúdo de uma página não couber na altura disponível, aplica um zoom-out
+// proporcional (largura e altura juntas) até caber por completo, sem distorcer nada.
+// OBS: só encolhe, nunca amplia — ampliar via transform força o navegador a calcular o
+// layout interno (flex/quebra de linha) numa largura menor que a real, o que já causou
+// nome cortado e barra vazando pra fora do card. Pra sobrar menos vazio na página quando
+// o conteúdo é curto, a página inteira é centralizada verticalmente (ver .pagina no CSS).
 function ajustarEscalaPagina(paginaEl) {
   const grid = paginaEl.querySelector(":scope > .grid");
   if (!grid) return;
@@ -703,13 +708,12 @@ function ajustarEscalaPagina(paginaEl) {
   grid.style.width = "";
   const alturaDisponivel = paginaEl.clientHeight;
   const alturaConteudo = grid.scrollHeight;
-  if (alturaDisponivel <= 0 || alturaConteudo <= 0) return;
-  let fator = alturaDisponivel / alturaConteudo;
-  fator = Math.min(Math.max(fator, 0.4), 1.7); // nunca encolhe nem amplia além do razoável
-  if (Math.abs(fator - 1) < 0.03) return; // já está bom, não vale a pena
-  grid.style.transformOrigin = "top left";
-  grid.style.width = (100 / fator) + "%";
-  grid.style.transform = `scale(${fator})`;
+  if (alturaDisponivel > 0 && alturaConteudo > alturaDisponivel) {
+    const fator = alturaDisponivel / alturaConteudo;
+    grid.style.transformOrigin = "top left";
+    grid.style.width = (100 / fator) + "%";
+    grid.style.transform = `scale(${fator})`;
+  }
 }
 function ajustarEscalaDasPaginas() {
   document.querySelectorAll("#conteudo .pagina").forEach(ajustarEscalaPagina);
