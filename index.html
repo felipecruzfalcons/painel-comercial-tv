@@ -140,8 +140,8 @@
   .p-pct { font-weight:800; font-size:20px; }
   .chart-card { grid-column: span 12; }
   .chart-wrap { position:relative; height:320px; }
-  .subcards-wrap { grid-column: span 12; display:flex; flex-wrap:wrap; align-items:flex-start; gap:12px; }
-  .subcard { flex:1 1 240px; min-width:240px; background:var(--card-bg); border:1px solid var(--borda); border-radius:16px; padding:14px 16px; }
+  .subcards-wrap { grid-column: span 12; display:flex; flex-wrap:wrap; align-items:stretch; gap:12px; }
+  .subcard { flex:1 1 240px; min-width:240px; background:var(--card-bg); border:1px solid var(--borda); border-radius:16px; padding:14px 16px; display:flex; flex-direction:column; }
   .subcard-title { font-size:13px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--texto-sub); margin-bottom:8px; }
   .subcard-row { display:flex; align-items:center; gap:9px; margin-bottom:7px; padding:3px 5px; border-radius:8px; border:2px solid transparent; }
   .subcard-row:last-child { margin-bottom:0; }
@@ -152,33 +152,31 @@
   .subcard-bar-wrap { flex:0 0 auto; height:10px; background:var(--cinza-bg); border-radius:999px; overflow:hidden; }
   .subcard-bar-fill { height:100%; border-radius:999px; }
   .subcard-pct { font-size:13px; font-weight:800; width:56px; text-align:right; flex-shrink:0; }
+  .subcard-rows { flex:1 1 auto; display:flex; flex-direction:column; justify-content:center; }
 
   .subcards-grid-topo {
     grid-column: span 12;
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    display: flex;
+    align-items: stretch;
     gap: 12px;
     margin-top: 10px;
   }
-  .subcards-grid-topo > .subcard:nth-child(1) { grid-column: 1; grid-row: 1; }
-  .subcards-grid-topo > .subcard:nth-child(2) { grid-column: 2; grid-row: 1 / span 2; }
-  .subcards-grid-topo > .subcard:nth-child(3) { grid-column: 3; grid-row: 1; }
-  .subcards-grid-topo > .subcard:nth-child(4) { grid-column: 3; grid-row: 2; }
-  .subcard--grande { min-width:0; padding:12px 14px; }
-  .subcard--grande .subcard-title { font-size:14px; margin-bottom:6px; }
-  .subcard--grande .subcard-row { gap:10px; margin-bottom:4px; }
-  .subcard--grande .subcard-avatar { width:44px; height:44px; font-size:17px; }
-  .subcard--grande .subcard-nome { font-size:22px; min-width:120px; }
-  .subcard--grande .subcard-bar-wrap { flex:0 0 120px; height:11px; }
-  .subcard--grande .subcard-pct { font-size:20px; width:72px; }
+  .subcards-grid-topo > .subcard { flex:1 1 0; min-width:0; }
+  .subcard--grande { min-width:0; padding:16px 18px; }
+  .subcard--grande .subcard-title { font-size:15px; margin-bottom:12px; }
+  .subcard--grande .subcard-row { gap:12px; margin-bottom:10px; }
+  .subcard--grande .subcard-avatar { width:48px; height:48px; font-size:18px; }
+  .subcard--grande .subcard-nome { font-size:24px; min-width:120px; }
+  .subcard--grande .subcard-bar-wrap { flex:0 0 160px; height:12px; }
+  .subcard--grande .subcard-pct { font-size:22px; width:78px; }
 
-  .subcard--media { min-width:0; padding:8px 10px; }
-  .subcard--media .subcard-title { font-size:12px; margin-bottom:5px; }
-  .subcard--media .subcard-row { gap:8px; margin-bottom:4px; }
-  .subcard--media .subcard-avatar { width:32px; height:32px; font-size:13px; }
-  .subcard--media .subcard-nome { font-size:17px; min-width:90px; }
-  .subcard--media .subcard-bar-wrap { flex:0 0 80px; height:8px; }
-  .subcard--media .subcard-pct { font-size:15px; width:50px; }
+  .subcard--media { min-width:0; padding:10px 12px; }
+  .subcard--media .subcard-title { font-size:12px; margin-bottom:8px; }
+  .subcard--media .subcard-row { gap:8px; margin-bottom:6px; }
+  .subcard--media .subcard-avatar { width:34px; height:34px; font-size:14px; }
+  .subcard--media .subcard-nome { font-size:18px; min-width:90px; }
+  .subcard--media .subcard-bar-wrap { flex:0 0 100px; height:9px; }
+  .subcard--media .subcard-pct { font-size:16px; width:52px; }
   .footer { grid-column: span 12; font-size:12px; color:var(--texto-sub); text-align:center; margin-top:6px; }
   .empty-msg { padding:44px; text-align:center; color:var(--texto-sub); }
   .theme-toggle {
@@ -193,6 +191,10 @@
     cursor: pointer;
   }
   .theme-toggle:hover { border-color: var(--dourado); }
+  .pagina-nav { position:fixed; right:10px; bottom:6px; display:flex; gap:4px; z-index:50; opacity:.3; transition:opacity .2s ease; }
+  .pagina-nav:hover { opacity:1; }
+  .pagina-nav-btn { width:18px; height:18px; border-radius:50%; border:1px solid var(--borda); background:var(--card-bg); color:var(--texto-sub); font-size:11px; line-height:1; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0; }
+  .pagina-nav-btn:hover { border-color:var(--dourado); color:var(--dourado); }
 </style>
 </head>
 <body>
@@ -216,6 +218,11 @@
         <div class="empty-msg" style="grid-column: span 12;">Carregando dados da planilha…</div>
       </div>
     </div>
+  </div>
+
+  <div class="pagina-nav">
+    <button class="pagina-nav-btn" onclick="irPara(-1)" aria-label="Página anterior" title="Página anterior">‹</button>
+    <button class="pagina-nav-btn" onclick="irPara(1)" aria-label="Próxima página" title="Próxima página">›</button>
   </div>
 
 <script>
@@ -480,7 +487,7 @@ function subCardHtml(categoria, todosVendedores, ritmoEsperado, variante) {
   return `
     <div class="subcard${classeExtra}">
       <div class="subcard-title">${categoria.nome}</div>
-      ${linhas}
+      <div class="subcard-rows">${linhas}</div>
     </div>
   `;
 }
@@ -685,8 +692,10 @@ function render(dados) {
   ajustarEscalaDasPaginas();
 }
 
-// Se o conteúdo de uma página não couber na altura disponível, aplica um zoom-out
-// proporcional (largura e altura juntas) até caber por completo, sem distorcer nada.
+// Ajusta a escala de cada página pra ocupar o máximo possível da tela: encolhe se o
+// conteúdo não couber (nunca corta uma linha) e AMPLIA se o conteúdo for menor que a
+// tela disponível (evita página "murcha" com fundo vazio sobrando embaixo).
+// Sempre proporcional (largura e altura juntas via transform), então nada distorce.
 function ajustarEscalaPagina(paginaEl) {
   const grid = paginaEl.querySelector(":scope > .grid");
   if (!grid) return;
@@ -694,12 +703,13 @@ function ajustarEscalaPagina(paginaEl) {
   grid.style.width = "";
   const alturaDisponivel = paginaEl.clientHeight;
   const alturaConteudo = grid.scrollHeight;
-  if (alturaDisponivel > 0 && alturaConteudo > alturaDisponivel) {
-    const fator = alturaDisponivel / alturaConteudo;
-    grid.style.transformOrigin = "top left";
-    grid.style.width = (100 / fator) + "%";
-    grid.style.transform = `scale(${fator})`;
-  }
+  if (alturaDisponivel <= 0 || alturaConteudo <= 0) return;
+  let fator = alturaDisponivel / alturaConteudo;
+  fator = Math.min(Math.max(fator, 0.4), 1.7); // nunca encolhe nem amplia além do razoável
+  if (Math.abs(fator - 1) < 0.03) return; // já está bom, não vale a pena
+  grid.style.transformOrigin = "top left";
+  grid.style.width = (100 / fator) + "%";
+  grid.style.transform = `scale(${fator})`;
 }
 function ajustarEscalaDasPaginas() {
   document.querySelectorAll("#conteudo .pagina").forEach(ajustarEscalaPagina);
@@ -797,6 +807,24 @@ function avancarPagina() {
     direcaoPagina *= -1;
   }
   paginaAtual += direcaoPagina;
+  mostrarPagina(paginaAtual);
+  agendarProximaPagina();
+}
+
+// Salto manual (setinhas do canto inferior direito): pula pra próxima/anterior
+// na hora, sem esperar o tempo da página, e reinicia o timer da página nova.
+// Também realinha a direção do vai-e-volta automático a partir de onde a pessoa parou.
+function irPara(delta) {
+  const totalPaginas = document.querySelectorAll("#conteudo .pagina").length;
+  const ultimoIndice = totalPaginas - 1;
+  if (ultimoIndice <= 0) return;
+  let novoIndice = paginaAtual + delta;
+  if (novoIndice > ultimoIndice) novoIndice = ultimoIndice;
+  if (novoIndice < 0) novoIndice = 0;
+  if (novoIndice === ultimoIndice) direcaoPagina = -1;
+  else if (novoIndice === 0) direcaoPagina = 1;
+  else direcaoPagina = delta >= 0 ? 1 : -1;
+  paginaAtual = novoIndice;
   mostrarPagina(paginaAtual);
   agendarProximaPagina();
 }
