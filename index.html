@@ -458,12 +458,14 @@ function subCardHtml(categoria, todosVendedores, ritmoEsperado, variante) {
     .filter(Boolean);
   if (!membros.length) return "";
   const ordenados = [...membros].sort((a, b) => b.pct - a.pct);
-  const maxPct = Math.max(...ordenados.map(v => v.pct), 0.0001);
   const linhas = ordenados.map(v => {
     const ratio = ritmoEsperado > 0 ? v.pct / ritmoEsperado : 1;
     const status = statusFromRatio(ratio);
     const cor = "var(--" + status + ")";
-    const largura = Math.max((v.pct / maxPct) * 100, 3);
+    // Escala absoluta: 100% de largura = 100% da meta batida, não o topo do grupo.
+    // Evita que o bar do 1º lugar sempre pareça "cheio" mesmo estando abaixo da meta,
+    // e evita comprimir os demais quando alguém supera 100%.
+    const largura = Math.min(Math.max(v.pct * 100, 3), 100);
     const emAlerta = status === "vermelho";
     return `
       <div class="subcard-row${emAlerta ? ' subcard-row--alerta' : ''}">
@@ -638,6 +640,11 @@ function render(dados) {
         <div class="subcards-grid-topo">
           ${CATEGORIAS_TOPO.map(cat => subCardHtml(cat, vendedores, ritmoEsperado, "grande")).join("")}
         </div>
+      </div>
+    </div>
+
+    <div class="pagina" data-pagina="2">
+      <div class="grid">
         <div class="subcards-wrap">
           ${CATEGORIAS_FARMERS.map(cat => subCardHtml(cat, vendedores, ritmoEsperado, "media")).join("")}
         </div>
@@ -647,7 +654,7 @@ function render(dados) {
       </div>
     </div>
 
-    <div class="pagina" data-pagina="2">
+    <div class="pagina" data-pagina="3">
       <div class="grid">
         <div class="card chart-card">
           <div class="card-label"><span class="dot dot-azul"></span> % da meta individual — Closer (Falcons + Stark)</div>
@@ -754,11 +761,12 @@ async function carregarDados() {
   }
 }
 
-// ===== Paginação por fade: 3 páginas fixas, cada uma com seu próprio tempo de exibição =====
-// Página 1 (índice 0) = topo + Top Closer/Top GC · Página 2 (índice 1) = sub cards de perfil ·
-// Página 3 (índice 2) = os dois gráficos individuais.
+// ===== Paginação por fade: 4 páginas fixas, cada uma com seu próprio tempo de exibição =====
+// Página 1 (índice 0) = topo + Top Closer/Top GC · Página 2 (índice 1) = sub cards 30+/50+/300+/Hunter Reativação ·
+// Página 3 (índice 2) = sub cards Farmers + Agência/Revendedor/Brindeiro/Hunter Outbound ·
+// Página 4 (índice 3) = os dois gráficos individuais.
 // Nunca rola: cada página ocupa a tela inteira e a troca é um fade suave.
-const DURACOES_PAGINA_MS = [15000, 60000, 20000]; // tempo de exibição de cada página, nessa ordem
+const DURACOES_PAGINA_MS = [15000, 25000, 35000, 20000]; // tempo de exibição de cada página, nessa ordem
 const FADE_MS = 700; // duração do fade entre páginas (bate com a transição do CSS .pagina)
 
 let autoPaginacaoIniciada = false;
