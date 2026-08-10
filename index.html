@@ -164,6 +164,13 @@
     gap: 12px;
     margin-top: 10px;
   }
+  .subcards-grid-2col {
+    grid-column: span 12;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .subcards-grid-2col > .subcard { min-width: 0; }
   .subcards-grid-topo > .subcard { flex:1 1 0; min-width:0; }
   .subcard--grande { min-width:0; padding:14px 16px; }
   .subcard--grande .subcard-title { font-size:14px; margin-bottom:10px; }
@@ -655,10 +662,8 @@ function render(dados) {
 
     <div class="pagina" data-pagina="2">
       <div class="grid">
-        <div class="subcards-wrap">
-          ${CATEGORIAS_FARMERS.map(cat => subCardHtml(cat, vendedores, ritmoEsperado, "media")).join("")}
-        </div>
-        <div class="subcards-wrap">
+        <div class="subcards-grid-2col">
+          ${CATEGORIAS_FARMERS.map(cat => subCardHtml(cat, vendedores, ritmoEsperado, "grande")).join("")}
           ${CATEGORIAS_RESTO.map(cat => subCardHtml(cat, vendedores, ritmoEsperado, "grande")).join("")}
         </div>
       </div>
