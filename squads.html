@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Painel Squads — SeuBoné</title>
+<style>
+  :root, :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0e1015;
+    --card-bg: #171a21;
+    --card-bg-2: #1d212b;
+    --borda: #2a2f3a;
+    --azul: #4f8cff;
+    --azul-bg: rgba(79,140,255,0.14);
+    --dourado: #ffcf33;
+    --dourado-bg: rgba(255,207,51,0.14);
+    --cinza: #9aa1ac;
+    --cinza-bg: #20242e;
+    --verde: #3ddc97;
+    --verde-bg: rgba(61,220,151,0.14);
+    --ambar: #fbbf24;
+    --ambar-bg: rgba(251,191,36,0.14);
+    --vermelho: #ff6b6b;
+    --vermelho-bg: rgba(255,107,107,0.14);
+    --texto: #f3f4f6;
+    --texto-sub: #9aa1ac;
+    --grid-linha: rgba(255,255,255,0.06);
+    --destaque-vivo: #ffd400;
+    --dourado-bg-leve: rgba(255,207,51,0.07);
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #dde0e5;
+    --card-bg: #eceef1;
+    --card-bg-2: #e4e7eb;
+    --borda: #e4e6ea;
+    --azul: #1e40af;
+    --azul-bg: #eaf1ff;
+    --dourado: #b8860b;
+    --dourado-bg: #fff7e0;
+    --cinza: #6b7280;
+    --cinza-bg: #d7dbe1;
+    --verde: #16a34a;
+    --verde-bg: #ecfdf3;
+    --ambar: #d97706;
+    --ambar-bg: #fff8ec;
+    --vermelho: #dc2626;
+    --vermelho-bg: #fef2f2;
+    --texto: #111827;
+    --texto-sub: #6b7280;
+    --grid-linha: rgba(0,0,0,0.08);
+    --destaque-vivo: #ffd400;
+    --dourado-bg-leve: #fffaf0;
+  }
+  body { transition: background-color .25s ease, color .25s ease; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--texto);
+    padding: 22px 32px 32px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .header { flex: none; display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:18px; flex-wrap:wrap; gap:10px; }
+  .header .logo { height: 42px; width:auto; display:block; margin-bottom:6px; }
+  .header .brand-sub { font-size:13px; font-weight:700; letter-spacing:.1em; color:var(--texto-sub); text-transform:uppercase; }
+  .header .semana { font-size:26px; font-weight:800; margin-top:2px; }
+  .header .meta-info { text-align:right; font-size:14px; color:var(--texto-sub); }
+  #conteudo { position:relative; flex:1 1 auto; min-height:0; overflow:hidden; }
+  .pagina {
+    position:absolute; inset:0; overflow:hidden;
+    opacity:0; visibility:hidden;
+    transition: opacity .7s ease;
+    display:flex; flex-direction:column; justify-content:center;
+  }
+  .pagina.pagina-ativa { opacity:1; visibility:visible; }
+  .pagina > .grid { width:100%; flex-shrink:0; }
+  .grid { display:grid; grid-template-columns: repeat(12, 1fr); gap:16px; }
+  .card { background:var(--card-bg); border:1px solid var(--borda); border-radius:18px; padding:20px 24px; }
+  .card-label { font-size:13px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--texto-sub); margin-bottom:10px; display:flex; align-items:center; gap:7px; }
+  .hero { grid-column: span 12; padding:28px 32px; }
+  .hero-top { display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:18px; }
+  .hero-num { font-size:76px; font-weight:800; line-height:1; }
+  .hero-sub { font-size:18px; color:var(--texto-sub); margin-top:8px; }
+  .bar-wrap { position:relative; margin-top:22px; height:26px; background:var(--cinza-bg); border:1px solid var(--borda); border-radius:999px; overflow:visible; }
+  .bar-fill { position:absolute; left:0; top:0; height:100%; border-radius:999px; transition:width .6s ease; }
+  .bar-marker { position:absolute; top:-7px; bottom:-7px; width:3px; background:var(--dourado); }
+  .bar-marker-label { position:absolute; top:-28px; transform:translateX(-50%); font-size:13px; font-weight:700; color:var(--dourado); white-space:nowrap; }
+  .bar-marker-label--alt { top:-48px; }
+  .bar-legend { display:flex; justify-content:space-between; margin-top:10px; font-size:13px; color:var(--texto-sub); }
+  .ladder { grid-column: span 12; }
+  .ladder-row { display:flex; gap:12px; overflow-x:auto; padding-bottom:4px; }
+  .chip { flex:1 1 0; min-width:120px; border-radius:14px; padding:12px 14px; text-align:center; border:1px solid var(--borda); background:var(--cinza-bg); }
+  .chip.proximo { background:var(--dourado-bg); border-color:var(--dourado); }
+  .chip .tier { font-size:13px; font-weight:700; color:var(--texto-sub); }
+  .chip.proximo .tier { color:var(--dourado); }
+  .chip .valor { font-size:17px; font-weight:800; margin-top:5px; }
+  .rank-card { grid-column: span 6; position:relative; }
+  .rank-card--destaque {
+    border: 3px solid var(--destaque-vivo);
+    box-shadow: inset 0 0 0 2px #000, 0 14px 34px rgba(0,0,0,0.28);
+    padding: 30px 34px;
+    min-height: 460px;
+  }
+  .rank-card--destaque .card-label { font-size:16px; margin-bottom:16px; }
+  .rank-card--destaque .group-total .pct { font-size:46px; }
+  .rank-card--destaque .group-total .desc { font-size:16px; }
+  .rank-card--destaque .podium-row { padding:15px 0; gap:16px; }
+  .rank-card--destaque .medal { width:50px; height:50px; font-size:20px; }
+  .rank-card--destaque .avatar { width:54px; height:54px; font-size:17px; }
+  .rank-card--destaque .p-nome { font-size:25px; }
+  .rank-card--destaque .p-squad { font-size:15px; }
+  .rank-card--destaque .p-pct { font-size:31px; }
+  .rank-card .card-label .dot { width:9px; height:9px; border-radius:50%; display:inline-block; }
+  .dot-azul { background:var(--azul); }
+  .dot-dourado { background:var(--dourado); }
+  .group-total { display:flex; align-items:baseline; gap:10px; margin-bottom:16px; padding-bottom:14px; border-bottom:1px dashed var(--borda); }
+  .group-total .pct { font-size:34px; font-weight:800; }
+  .group-total .desc { font-size:13px; color:var(--texto-sub); }
+  .podium-row { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--borda); }
+  .podium-row:last-child { border-bottom:none; }
+  .medal { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; color:#161616; flex-shrink:0; }
+  .medal-1 { background:#e9c542; }
+  .medal-2 { background:#b7bec8; }
+  .avatar { position:relative; overflow:hidden; width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; color:#101114; flex-shrink:0; }
+  .avatar-azul { background: linear-gradient(135deg, var(--azul), #9cc0ff); }
+  .avatar-dourado { background: linear-gradient(135deg, var(--dourado), #ffe38a); }
+  .p-nome { font-weight:700; font-size:15px; }
+  .p-squad { font-size:12px; color:var(--texto-sub); }
+  .p-right { margin-left:auto; text-align:right; }
+  .p-pct { font-weight:800; font-size:20px; }
+  .footer { grid-column: span 12; font-size:12px; color:var(--texto-sub); text-align:center; margin-top:6px; }
+  .empty-msg { padding:44px; text-align:center; color:var(--texto-sub); }
+  .theme-toggle {
+    margin-top: 8px;
+    border: 1px solid var(--borda);
+    background: var(--card-bg);
+    color: var(--texto);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .theme-toggle:hover { border-color: var(--dourado); }
+  .link-outro-painel {
+    margin-top: 8px;
+    display: inline-block;
+    font-size: 13px;
+    color: var(--texto-sub);
+    text-decoration: none;
+    border: 1px solid var(--borda);
+    padding: 7px 14px;
+    border-radius: 999px;
+  }
+  .link-outro-painel:hover { border-color: var(--azul); color: var(--azul); }
+  .pagina-nav { position:fixed; right:10px; bottom:6px; display:flex; gap:4px; z-index:50; opacity:.3; transition:opacity .2s ease; }
+  .pagina-nav:hover { opacity:1; }
+  .pagina-nav-btn { width:18px; height:18px; border-radius:50%; border:1px solid var(--borda); background:var(--card-bg); color:var(--texto-sub); font-size:11px; line-height:1; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0; }
+  .pagina-nav-btn:hover { border-color:var(--dourado); color:var(--dourado); }
+</style>
+</head>
+<body>
+
+  <div class="header">
+    <div>
+      <img class="logo" src="logo.png" alt="SeuBoné">
+      <div class="brand-sub">Painel Comercial · Squads</div>
+      <div class="semana" id="semanaLabel">carregando…</div>
+    </div>
+    <div class="meta-info">
+      <div id="atualizadoLabel">última leitura: —</div>
+      <button class="theme-toggle" id="btnTema" onclick="alternarTema()">☀️ Tema claro</button>
+      <br>
+      <a class="link-outro-painel" href="index.html">← Painel de vendedores</a>
+    </div>
+  </div>
+
+  <div id="conteudo">
+    <div class="pagina pagina-ativa">
+      <div class="grid">
+        <div class="empty-msg" style="grid-column: span 12;">Carregando dados da planilha…</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pagina-nav">
+    <button class="pagina-nav-btn" onclick="irPara(-1)" aria-label="Página anterior" title="Página anterior">‹</button>
+    <button class="pagina-nav-btn" onclick="irPara(1)" aria-label="Próxima página" title="Próxima página">›</button>
+  </div>
+
+<script>
+// >>> Mesma URL/deploy do Apps Script do painel de vendedores — só troca o parâmetro
+// "painel=squads" pra ler a aba de resultado semanal/mensal dos squads em vez da aba
+// de vendedores. Sem "painel=squads" continua servindo a aba de vendedores de sempre. <<<
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx_8R_UGyyXDK68tazvTc9wj0-ECxbtCvHHOXArkAtvtTjX5uoe2kVCtnG2uxlkfkMxkA/exec?key=comercialpainel2026";
+
+const REFRESH_MS = 10 * 60 * 1000; // 10 min
+const CLOSER_SQUADS = ["FALCONS", "STARK"];
+const GC_SQUADS = ["MAVERICK", "NEXUS"];
+const EXCLUDE_SQUADS = ["TUBA", "SUPERNOVA", "BIGBANG", ""];
+
+function fmtBRL(v) {
+  return "R$ " + Number(v || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+function fmtPct(v) {
+  return (Number(v || 0) * 100).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%";
+}
+function toNum(v) {
+  if (typeof v === "number") return v;
+  const n = parseFloat(String(v || "").replace(",", "."));
+  return isNaN(n) ? 0 : n;
+}
+
+function statusFromRatio(ratio) {
+  if (ratio >= 0.95) return "verde";
+  if (ratio >= 0.7) return "ambar";
+  return "vermelho";
+}
+
+// ===== Tema claro/escuro =====
+let ultimoDados = null;
+
+function aplicarTema(tema) {
+  document.documentElement.setAttribute("data-theme", tema);
+  const btn = document.getElementById("btnTema");
+  if (btn) btn.textContent = tema === "dark" ? "☀️ Tema claro" : "🌙 Tema escuro";
+  try { localStorage.setItem("painelSquadsTema", tema); } catch (e) { /* segue sem salvar */ }
+  if (ultimoDados) render(ultimoDados);
+}
+function alternarTema() {
+  const atual = document.documentElement.getAttribute("data-theme") || "dark";
+  aplicarTema(atual === "dark" ? "light" : "dark");
+}
+(function iniciarTema() {
+  let salvo = "dark";
+  try { salvo = localStorage.getItem("painelSquadsTema") || "dark"; } catch (e) { /* ignora */ }
+  document.documentElement.setAttribute("data-theme", salvo);
+})();
+
+// Tira o código numérico do início (ex: "082026 SEMANA 2 (AGO)" -> "SEMANA 2 (AGO)")
+function limparSemanaLabel(label) {
+  const s = String(label || "");
+  const idx = s.toUpperCase().indexOf("SEMANA");
+  return idx >= 0 ? s.slice(idx).trim() : s.trim();
+}
+
+// ===== Lê a aba de SQUADS (semanal + mensal) =====
+// Estrutura confirmada linha a linha em 13/08/2026: soma dos vendedores de cada squad
+// bate exatamente com a linha-resumo do squad (testado nos 4 squads, semana e mês, sem
+// divergência). Não existe Meta Mensal por vendedor na aba — só no nível de squad, por
+// isso este painel trabalha só com o total do squad (confirmado com o Felipe).
+function parseSquads(payload) {
+  const rows = payload.rows || [];
+  const semanaLabel = rows[0] ? String(rows[0][0] || "").trim() : "";
+  const mesLabel = rows[0] ? String(rows[0][9] || "").trim().replace(/[()]/g, "") : "";
+
+  const headerIdx = rows.findIndex(r => r[1] === "Squad" && r[2] === "Meta");
+  const squads = [];
+  if (headerIdx >= 0) {
+    for (let i = headerIdx + 1; i < rows.length; i++) {
+      const r = rows[i];
+      const nome = String(r[0] || "").trim().toUpperCase();
+      if (!nome) break; // linha em branco = fim da tabela de squads
+      if (EXCLUDE_SQUADS.includes(nome)) continue;
+      const metaSemanal = toNum(r[2]);
+      const faturadoSemanal = toNum(r[3]);
+      const metaMensal = toNum(r[12]);
+      const faturadoMensal = toNum(r[13]);
+      squads.push({
+        nome,
+        metaSemanal, faturadoSemanal,
+        pctSemanal: metaSemanal > 0 ? faturadoSemanal / metaSemanal : 0,
+        metaMensal, faturadoMensal,
+        pctMensal: metaMensal > 0 ? faturadoMensal / metaMensal : 0
+      });
+    }
+  }
+  return { semanaLabel, mesLabel, squads };
+}
+
+// ===== Lê a aba de vendedores só pra pegar o contexto da semana (dia atual e ritmo
+// esperado) — esse dado não existe na aba de squads, mas é o mesmo pro time inteiro. =====
+function parseContexto(payload) {
+  const rows = payload.rows || [];
+  const paceRow = rows.find(r => r.some(c => typeof c === "string" && c.includes("% de realização esperado")));
+  let ritmoEsperado = null;
+  if (paceRow) {
+    const idx = paceRow.findIndex(c => typeof c === "string" && c.includes("% de realização esperado"));
+    ritmoEsperado = toNum(paceRow[idx + 1]);
+  }
+  return { ritmoEsperado };
+}
+
+// Mesma regra de negócio do painel de vendedores: semana comercial de sexta a quinta,
+// virando às 09:00 (não à meia-noite), pra projeção de faturamento da semana.
+function calcularDiaComercial() {
+  const agora = new Date();
+  const referencia = new Date(agora);
+  if (agora.getHours() < 9) referencia.setDate(referencia.getDate() - 1);
+  const mapaSlot = { 5: 1, 6: 1, 0: 1, 1: 2, 2: 3, 3: 4, 4: 5 };
+  const diaAtual = mapaSlot[referencia.getDay()];
+  return { diaAtual, diasCompletos: diaAtual };
+}
+
+function ladderHtml(meta, fat) {
+  const tiers = [70, 80, 90, 100, 110, 120, 130, 140];
+  let proximoMarcado = false;
+  return tiers.map(t => {
+    const faltaVal = (meta * t / 100) - fat;
+    const isProximo = !proximoMarcado && faltaVal > 0;
+    if (isProximo) proximoMarcado = true;
+    const faltaTxt = faltaVal > 0 ? fmtBRL(faltaVal) : "batido ✓";
+    return `
+      <div class="chip ${isProximo ? 'proximo' : ''}">
+        <div class="tier">${t}% da meta</div>
+        <div class="valor">${faltaTxt}</div>
+      </div>
+    `;
+  }).join("");
+}
+
+// Squad não tem foto — mostra as 3 primeiras letras num círculo, mesma linguagem visual
+// dos avatares de vendedor (gradiente azul/dourado).
+function squadAvatarHtml(nome, classe) {
+  const abrev = String(nome || "").slice(0, 3).toUpperCase();
+  return `<div class="avatar ${classe || 'avatar-azul'}">${abrev}</div>`;
+}
+
+// Pódio de 2 squads dentro do mesmo grupo (Closer: Falcons x Stark · GC: Maverick x Nexus),
+// ordenado por quem está mais perto/além da meta no período escolhido.
+function squadPodiumHtml(squadsDoGrupo, periodo) {
+  if (!squadsDoGrupo.length) return '<div class="empty-msg">Sem dados no período.</div>';
+  const pctKey = periodo === "mensal" ? "pctMensal" : "pctSemanal";
+  const fatKey = periodo === "mensal" ? "faturadoMensal" : "faturadoSemanal";
+  const metaKey = periodo === "mensal" ? "metaMensal" : "metaSemanal";
+  const ordenado = [...squadsDoGrupo].sort((a, b) => b[pctKey] - a[pctKey]);
+  const medals = ["medal-1", "medal-2"];
+  const labels = ["1º", "2º"];
+  return ordenado.map((s, i) => `
+    <div class="podium-row">
+      <div class="medal ${medals[i] || 'medal-2'}">${labels[i] || (i + 1) + 'º'}</div>
+      ${squadAvatarHtml(s.nome, i === 0 ? "avatar-dourado" : "avatar-azul")}
+      <div>
+        <div class="p-nome">${s.nome}</div>
+        <div class="p-squad">${fmtBRL(s[fatKey])} de ${fmtBRL(s[metaKey])}</div>
+      </div>
+      <div class="p-right">
+        <div class="p-pct">${fmtPct(s[pctKey])}</div>
+      </div>
+    </div>
+  `).join("");
+}
+
+function somaGrupo(squads, nomes, metaKey, fatKey) {
+  const grupo = squads.filter(s => nomes.includes(s.nome));
+  const meta = grupo.reduce((acc, s) => acc + s[metaKey], 0);
+  const fat = grupo.reduce((acc, s) => acc + s[fatKey], 0);
+  return { meta, fat, pct: meta > 0 ? fat / meta : 0, grupo };
+}
+
+function render(dados) {
+  ultimoDados = dados;
+  const { semanaLabel, mesLabel, squads, ritmoEsperado } = dados;
+  const { diasCompletos } = calcularDiaComercial();
+  const diasUteisSemana = 5;
+
+  document.getElementById("semanaLabel").textContent = limparSemanaLabel(semanaLabel) || "Semana comercial";
+  document.getElementById("atualizadoLabel").textContent = "última leitura: " + new Date().toLocaleString("pt-BR");
+
+  const closerSem = somaGrupo(squads, CLOSER_SQUADS, "metaSemanal", "faturadoSemanal");
+  const gcSem = somaGrupo(squads, GC_SQUADS, "metaSemanal", "faturadoSemanal");
+  const totalMetaSem = closerSem.meta + gcSem.meta;
+  const totalFatSem = closerSem.fat + gcSem.fat;
+  const pctSem = totalMetaSem > 0 ? totalFatSem / totalMetaSem : 0;
+  const ratioSem = ritmoEsperado > 0 ? pctSem / ritmoEsperado : 1;
+  const statusSem = statusFromRatio(ratioSem);
+  const barPctSem = Math.min(pctSem * 100, 100);
+  const markerPctSem = Math.min((ritmoEsperado || 0) * 100, 100);
+  const projecaoFatSem = diasCompletos > 0 ? (totalFatSem / diasCompletos) * diasUteisSemana : totalFatSem;
+  const projecaoPctSem = totalMetaSem > 0 ? projecaoFatSem / totalMetaSem : 0;
+  const statusProjecaoSem = statusFromRatio(projecaoPctSem);
+  const projMarkerPctSem = Math.min(projecaoPctSem * 100, 100);
+  const marcadoresProximosSem = Math.abs(projMarkerPctSem - markerPctSem) < 8;
+
+  const closerMes = somaGrupo(squads, CLOSER_SQUADS, "metaMensal", "faturadoMensal");
+  const gcMes = somaGrupo(squads, GC_SQUADS, "metaMensal", "faturadoMensal");
+  const totalMetaMes = closerMes.meta + gcMes.meta;
+  const totalFatMes = closerMes.fat + gcMes.fat;
+  const pctMes = totalMetaMes > 0 ? totalFatMes / totalMetaMes : 0;
+  // Não existe "ritmo esperado" pro mês (o conceito é só semanal, dia-a-dia) — aqui o
+  // status usa a própria % do mês contra 100% da meta mensal, sem marcador de projeção.
+  const statusMes = statusFromRatio(pctMes);
+  const barPctMes = Math.min(pctMes * 100, 100);
+
+  document.getElementById("conteudo").innerHTML = `
+    <div class="pagina" data-pagina="0">
+      <div class="grid">
+        <div class="card hero">
+          <div class="hero-top">
+            <div>
+              <div class="card-label">Resultado semanal por squad · time comercial (closer + gc)</div>
+              <div class="hero-num" style="color: var(--${statusSem})">${fmtPct(pctSem)}</div>
+              <div class="hero-sub">${fmtBRL(totalFatSem)} faturado de ${fmtBRL(totalMetaSem)} de meta semanal</div>
+            </div>
+          </div>
+          <div class="bar-wrap">
+            <div class="bar-fill" style="width:${barPctSem}%; background:var(--${statusSem})"></div>
+            <div class="bar-marker" style="left:${markerPctSem}%; z-index:1"></div>
+            <div class="bar-marker-label${marcadoresProximosSem ? ' bar-marker-label--alt' : ''}" style="left:${markerPctSem}%; z-index:1">Esperado Atual ${fmtPct(ritmoEsperado)}</div>
+            <div class="bar-marker" style="left:${projMarkerPctSem}%; background:var(--${statusProjecaoSem}); z-index:2"></div>
+            <div class="bar-marker-label" style="left:${projMarkerPctSem}%; color:var(--${statusProjecaoSem}); z-index:2">Projeção Semanal ${fmtPct(projecaoPctSem)}</div>
+          </div>
+          <div class="bar-legend"><span>0%</span><span>100% da meta</span></div>
+        </div>
+
+        <div class="card ladder">
+          <div class="card-label">🪜 Régua da semana — quanto falta pra bater cada patamar</div>
+          <div class="ladder-row">${ladderHtml(totalMetaSem, totalFatSem)}</div>
+        </div>
+
+        <div class="card rank-card rank-card--destaque">
+          <div class="card-label"><span class="dot dot-dourado"></span> Ranking Closer (Falcons x Stark) — semana</div>
+          <div class="group-total">
+            <div class="pct" style="color:var(--${statusFromRatio(ritmoEsperado > 0 ? closerSem.pct / ritmoEsperado : 1)})">${fmtPct(closerSem.pct)}</div>
+            <div class="desc">${fmtBRL(closerSem.fat)} de ${fmtBRL(closerSem.meta)} de meta do grupo</div>
+          </div>
+          ${squadPodiumHtml(closerSem.grupo, "semanal")}
+        </div>
+
+        <div class="card rank-card rank-card--destaque">
+          <div class="card-label"><span class="dot dot-dourado"></span> Ranking GC (Maverick x Nexus) — semana</div>
+          <div class="group-total">
+            <div class="pct" style="color:var(--${statusFromRatio(ritmoEsperado > 0 ? gcSem.pct / ritmoEsperado : 1)})">${fmtPct(gcSem.pct)}</div>
+            <div class="desc">${fmtBRL(gcSem.fat)} de ${fmtBRL(gcSem.meta)} de meta do grupo</div>
+          </div>
+          ${squadPodiumHtml(gcSem.grupo, "semanal")}
+        </div>
+      </div>
+    </div>
+
+    <div class="pagina" data-pagina="1">
+      <div class="grid">
+        <div class="card hero">
+          <div class="hero-top">
+            <div>
+              <div class="card-label">Resultado mensal por squad · time comercial (closer + gc) · ${mesLabel || 'mês'}</div>
+              <div class="hero-num" style="color: var(--${statusMes})">${fmtPct(pctMes)}</div>
+              <div class="hero-sub">${fmtBRL(totalFatMes)} faturado de ${fmtBRL(totalMetaMes)} de meta mensal</div>
+            </div>
+          </div>
+          <div class="bar-wrap">
+            <div class="bar-fill" style="width:${barPctMes}%; background:var(--${statusMes})"></div>
+          </div>
+          <div class="bar-legend"><span>0%</span><span>100% da meta mensal</span></div>
+        </div>
+
+        <div class="card ladder">
+          <div class="card-label">🪜 Régua do mês — quanto falta pra bater cada patamar</div>
+          <div class="ladder-row">${ladderHtml(totalMetaMes, totalFatMes)}</div>
+        </div>
+
+        <div class="card rank-card rank-card--destaque">
+          <div class="card-label"><span class="dot dot-dourado"></span> Ranking Closer (Falcons x Stark) — mês</div>
+          <div class="group-total">
+            <div class="pct" style="color:var(--${statusFromRatio(closerMes.pct)})">${fmtPct(closerMes.pct)}</div>
+            <div class="desc">${fmtBRL(closerMes.fat)} de ${fmtBRL(closerMes.meta)} de meta do grupo</div>
+          </div>
+          ${squadPodiumHtml(closerMes.grupo, "mensal")}
+        </div>
+
+        <div class="card rank-card rank-card--destaque">
+          <div class="card-label"><span class="dot dot-dourado"></span> Ranking GC (Maverick x Nexus) — mês</div>
+          <div class="group-total">
+            <div class="pct" style="color:var(--${statusFromRatio(gcMes.pct)})">${fmtPct(gcMes.pct)}</div>
+            <div class="desc">${fmtBRL(gcMes.fat)} de ${fmtBRL(gcMes.meta)} de meta do grupo</div>
+          </div>
+          ${squadPodiumHtml(gcMes.grupo, "mensal")}
+        </div>
+
+        <div class="footer">
+          Fonte: aba "Cópia de GRÁFICO SEMANAL E MENSAL" via Apps Script · atualiza a cada ~10 min ·
+          Não existe meta mensal individual na aba — por isso este painel mostra só o total de cada squad
+        </div>
+      </div>
+    </div>
+  `;
+
+  mostrarPagina(paginaAtual);
+  ajustarEscalaDasPaginas();
+}
+
+// Se o conteúdo de uma página não couber na altura disponível, aplica um zoom-out
+// proporcional até caber por completo, sem distorcer nada. Só encolhe, nunca amplia
+// (ampliar via transform aperta o layout interno numa largura menor que a real).
+function ajustarEscalaPagina(paginaEl) {
+  const grid = paginaEl.querySelector(":scope > .grid");
+  if (!grid) return;
+  grid.style.transform = "";
+  grid.style.width = "";
+  const alturaDisponivel = paginaEl.clientHeight;
+  const alturaConteudo = grid.scrollHeight;
+  if (alturaDisponivel > 0 && alturaConteudo > alturaDisponivel) {
+    const fator = alturaDisponivel / alturaConteudo;
+    grid.style.transformOrigin = "top left";
+    grid.style.width = (100 / fator) + "%";
+    grid.style.transform = `scale(${fator})`;
+  }
+}
+function ajustarEscalaDasPaginas() {
+  document.querySelectorAll("#conteudo .pagina").forEach(ajustarEscalaPagina);
+}
+
+function jsonpRequest(url) {
+  return new Promise((resolve, reject) => {
+    const callbackName = "painelCallback_" + Date.now() + "_" + Math.floor(Math.random() * 1e6);
+    const script = document.createElement("script");
+    let timeoutId;
+    function cleanup() {
+      clearTimeout(timeoutId);
+      delete window[callbackName];
+      script.remove();
+    }
+    window[callbackName] = function(data) {
+      resolve(data);
+      cleanup();
+    };
+    script.onerror = function() {
+      reject(new Error("Falha ao carregar o Apps Script (verifique a URL/deploy)"));
+      cleanup();
+    };
+    timeoutId = setTimeout(function() {
+      reject(new Error("Tempo esgotado aguardando resposta do Apps Script"));
+      cleanup();
+    }, 25000);
+    const sep = url.includes("?") ? "&" : "?";
+    script.src = url + sep + "callback=" + callbackName + "&_=" + Date.now();
+    document.body.appendChild(script);
+  });
+}
+
+async function carregarDados() {
+  try {
+    const [payloadSquads, payloadContexto] = await Promise.all([
+      jsonpRequest(APPS_SCRIPT_URL + "&painel=squads"),
+      jsonpRequest(APPS_SCRIPT_URL)
+    ]);
+    if (payloadSquads.error) throw new Error(payloadSquads.error);
+    if (payloadContexto.error) throw new Error(payloadContexto.error);
+    const dados = { ...parseSquads(payloadSquads), ...parseContexto(payloadContexto) };
+    render(dados);
+  } catch (e) {
+    if (!ultimoDados) {
+      document.getElementById("conteudo").innerHTML = `
+        <div class="pagina pagina-ativa">
+          <div class="grid">
+            <div class="empty-msg" style="grid-column:span 12;">
+              Erro ao carregar dados: ${e.message || e}<br>
+              Verifique se a URL do Apps Script está correta, se o deploy está com acesso "Qualquer pessoa"
+              e se a última versão implantada já tem o suporte a "painel=squads".
+            </div>
+          </div>
+        </div>`;
+    }
+    console.error("Erro ao carregar painel de squads:", e);
+    setTimeout(carregarDados, 30000);
+  }
+}
+
+// ===== Paginação por fade: 2 páginas (Semana / Mês) =====
+const DURACOES_PAGINA_MS = [25000, 25000];
+let autoPaginacaoIniciada = false;
+let paginaAtual = 0;
+let direcaoPagina = 1;
+let timerProximaPagina = null;
+
+function mostrarPagina(indice) {
+  const paginas = document.querySelectorAll("#conteudo .pagina");
+  paginas.forEach((p, i) => p.classList.toggle("pagina-ativa", i === indice));
+}
+function agendarProximaPagina() {
+  clearTimeout(timerProximaPagina);
+  const duracao = DURACOES_PAGINA_MS[paginaAtual] ?? 20000;
+  timerProximaPagina = setTimeout(avancarPagina, duracao);
+}
+function avancarPagina() {
+  const totalPaginas = document.querySelectorAll("#conteudo .pagina").length;
+  const ultimoIndice = totalPaginas - 1;
+  if (ultimoIndice <= 0) {
+    agendarProximaPagina();
+    return;
+  }
+  if (paginaAtual + direcaoPagina > ultimoIndice || paginaAtual + direcaoPagina < 0) {
+    direcaoPagina *= -1;
+  }
+  paginaAtual += direcaoPagina;
+  mostrarPagina(paginaAtual);
+  agendarProximaPagina();
+}
+function irPara(delta) {
+  const totalPaginas = document.querySelectorAll("#conteudo .pagina").length;
+  const ultimoIndice = totalPaginas - 1;
+  if (ultimoIndice <= 0) return;
+  let novoIndice = paginaAtual + delta;
+  if (novoIndice > ultimoIndice) novoIndice = ultimoIndice;
+  if (novoIndice < 0) novoIndice = 0;
+  if (novoIndice === ultimoIndice) direcaoPagina = -1;
+  else if (novoIndice === 0) direcaoPagina = 1;
+  else direcaoPagina = delta >= 0 ? 1 : -1;
+  paginaAtual = novoIndice;
+  mostrarPagina(paginaAtual);
+  agendarProximaPagina();
+}
+function iniciarAutoPaginacao() {
+  if (autoPaginacaoIniciada) return;
+  autoPaginacaoIniciada = true;
+  paginaAtual = 0;
+  direcaoPagina = 1;
+  mostrarPagina(0);
+  agendarProximaPagina();
+}
+
+(function sincronizarBotaoTema() {
+  const tema = document.documentElement.getAttribute("data-theme") || "dark";
+  const btn = document.getElementById("btnTema");
+  if (btn) btn.textContent = tema === "dark" ? "☀️ Tema claro" : "🌙 Tema escuro";
+})();
+
+carregarDados();
+setInterval(carregarDados, REFRESH_MS);
+setTimeout(iniciarAutoPaginacao, 1500);
+</script>
+
+</body>
+</html>
