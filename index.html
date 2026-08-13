@@ -28,6 +28,7 @@
     --texto-sub: #9aa1ac;
     --grid-linha: rgba(255,255,255,0.06);
     --destaque-vivo: #ffd400;
+    --dourado-bg-leve: rgba(255,207,51,0.07);
   }
   :root[data-theme="light"] {
     color-scheme: light;
@@ -51,6 +52,7 @@
     --texto-sub: #6b7280;
     --grid-linha: rgba(0,0,0,0.08);
     --destaque-vivo: #ffd400;
+    --dourado-bg-leve: #fffaf0;
   }
   body { transition: background-color .25s ease, color .25s ease; }
   * { box-sizing: border-box; }
@@ -148,6 +150,12 @@
   .subcard-row { display:flex; align-items:center; gap:9px; margin-bottom:7px; padding:3px 5px; border-radius:8px; border:2px solid transparent; max-width:100%; }
   .subcard-row:last-child { margin-bottom:0; }
   .subcard-row--alerta { border-color:var(--vermelho); background:var(--vermelho-bg); }
+  /* Destaque de quem está no verde (acima do ritmo esperado): dourado, não verde —
+     verde já é o status (bateu o ritmo); dourado é a cor de "destaque" no resto do
+     painel (Top Closer, Top GC, medalhas do pódio). Fundo mais sutil que o alerta
+     vermelho de propósito: elogio não pode gritar mais alto que alerta. */
+  .subcard-row--destaque { border-color:var(--dourado); background:var(--dourado-bg-leve); }
+  .subcard-icone { margin-right:2px; }
   .subcard-avatar { position:relative; overflow:hidden; width:26px; height:26px; border-radius:50%; background:var(--cinza-bg); color:var(--texto); font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
   .subcard-avatar img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:50%; }
   /* Nome nunca corta com "..." — se não couber numa linha, quebra pra segunda linha inteiro. */
@@ -477,10 +485,14 @@ function subCardHtml(categoria, todosVendedores, ritmoEsperado, variante) {
     // e evita comprimir os demais quando alguém supera 100%.
     const largura = Math.min(Math.max(v.pct * 100, 3), 100);
     const emAlerta = status === "vermelho";
+    const emDestaque = status === "verde";
+    const classeStatus = emAlerta ? ' subcard-row--alerta' : (emDestaque ? ' subcard-row--destaque' : '');
+    const iconeStatus = emAlerta ? '⚠️' : (emDestaque ? '⭐' : '');
+    const iconeHtml = iconeStatus ? `<span class="subcard-icone" title="${emAlerta ? 'Abaixo do ritmo esperado' : 'Acima do ritmo esperado'}" aria-hidden="true">${iconeStatus}</span> ` : '';
     return `
-      <div class="subcard-row${emAlerta ? ' subcard-row--alerta' : ''}">
+      <div class="subcard-row${classeStatus}">
         ${avatarHtml(v.nome, "", "subcard-avatar")}
-        <div class="subcard-nome" title="${v.nome}">${v.nome}</div>
+        <div class="subcard-nome" title="${v.nome}">${iconeHtml}${v.nome}</div>
         <div class="subcard-bar-wrap"><div class="subcard-bar-fill" style="width:${largura}%; background:${cor}"></div></div>
         <div class="subcard-pct">${fmtPct(v.pct)}</div>
       </div>
