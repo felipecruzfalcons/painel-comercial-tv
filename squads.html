@@ -2,7 +2,9 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Painel Squads — SeuBoné</title>
+<title>Painel Comercial — SeuBoné</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <style>
   :root, :root[data-theme="dark"] {
     color-scheme: dark;
@@ -68,10 +70,9 @@
   }
   .header { flex: none; display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:18px; flex-wrap:wrap; gap:10px; }
   .header .logo { height: 42px; width:auto; display:block; margin-bottom:6px; }
-  /* Tema claro: logo vira preto e "engorda" (drop-shadows em 4 direções simulam negrito
-     numa imagem, já que peso de fonte não se aplica a PNG) — no escuro fica como é. */
+  /* Tema claro: logo vira preto sólido — no escuro fica como é. */
   :root[data-theme="light"] .header .logo {
-    filter: brightness(0) drop-shadow(0.5px 0 0 #000) drop-shadow(-0.5px 0 0 #000) drop-shadow(0 0.5px 0 #000) drop-shadow(0 -0.5px 0 #000);
+    filter: brightness(0);
   }
   .header .brand-sub { font-size:13px; font-weight:700; letter-spacing:.1em; color:var(--texto-sub); text-transform:uppercase; }
   .header .semana { font-size:26px; font-weight:800; margin-top:2px; }
@@ -92,6 +93,10 @@
   .hero-top { display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:18px; }
   .hero-num { font-size:76px; font-weight:800; line-height:1; }
   .hero-sub { font-size:18px; color:var(--texto-sub); margin-top:8px; }
+  .status-badge { display:inline-flex; align-items:center; gap:7px; padding:10px 16px; border-radius:999px; font-weight:700; font-size:15px; white-space:nowrap; }
+  .status-vermelho { background:var(--vermelho-bg); color:var(--vermelho); }
+  .status-ambar { background:var(--ambar-bg); color:var(--ambar); }
+  .status-verde { background:var(--verde-bg); color:var(--verde); }
   .bar-wrap { position:relative; margin-top:22px; height:26px; background:var(--cinza-bg); border:1px solid var(--borda); border-radius:999px; overflow:visible; }
   .bar-fill { position:absolute; left:0; top:0; height:100%; border-radius:999px; transition:width .6s ease; }
   .bar-marker { position:absolute; top:-7px; bottom:-7px; width:3px; background:var(--dourado); }
@@ -105,12 +110,22 @@
   .chip .tier { font-size:13px; font-weight:700; color:var(--texto-sub); }
   .chip.proximo .tier { color:var(--dourado); }
   .chip .valor { font-size:17px; font-weight:800; margin-top:5px; }
-  .rank-card { grid-column: span 12; position:relative; }
+  .rank-card { grid-column: span 6; position:relative; }
   .rank-card--destaque {
     border: 3px solid var(--destaque-vivo);
     box-shadow: inset 0 0 0 2px #000, 0 14px 34px rgba(0,0,0,0.28);
-    padding: 26px 36px;
+    padding: 30px 34px;
+    min-height: 460px;
   }
+  .rank-card--destaque .card-label { font-size:16px; margin-bottom:16px; }
+  .rank-card--destaque .group-total .pct { font-size:46px; }
+  .rank-card--destaque .group-total .desc { font-size:16px; }
+  .rank-card--destaque .podium-row { padding:13px 0; gap:14px; }
+  .rank-card--destaque .medal { width:46px; height:46px; font-size:19px; }
+  .rank-card--destaque .avatar { width:50px; height:50px; font-size:18px; }
+  .rank-card--destaque .p-nome { font-size:23px; }
+  .rank-card--destaque .p-squad { font-size:15px; }
+  .rank-card--destaque .p-pct { font-size:29px; }
   .rank-card .card-label .dot { width:9px; height:9px; border-radius:50%; display:inline-block; }
   .dot-azul { background:var(--azul); }
   .dot-dourado { background:var(--dourado); }
@@ -122,13 +137,62 @@
   .medal { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; color:#161616; flex-shrink:0; }
   .medal-1 { background:#e9c542; }
   .medal-2 { background:#b7bec8; }
+  .medal-3 { background:#c98a52; }
   .avatar { position:relative; overflow:hidden; width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; color:#101114; flex-shrink:0; }
   .avatar-azul { background: linear-gradient(135deg, var(--azul), #9cc0ff); }
   .avatar-dourado { background: linear-gradient(135deg, var(--dourado), #ffe38a); }
+  .avatar img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:50%; }
   .p-nome { font-weight:700; font-size:15px; }
   .p-squad { font-size:12px; color:var(--texto-sub); }
   .p-right { margin-left:auto; text-align:right; }
   .p-pct { font-weight:800; font-size:20px; }
+  .chart-card { grid-column: span 12; }
+  .chart-wrap { position:relative; height:320px; }
+  .subcards-wrap { grid-column: span 12; display:flex; flex-wrap:wrap; align-items:stretch; gap:12px; }
+  .subcard { flex:1 1 240px; min-width:240px; max-width:100%; overflow:hidden; background:var(--card-bg); border:1px solid var(--borda); border-radius:16px; padding:14px 16px; display:flex; flex-direction:column; }
+  .subcard-title { font-size:13px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--texto-sub); margin-bottom:8px; }
+  .subcard-row { display:flex; align-items:center; gap:9px; margin-bottom:7px; padding:3px 5px; border-radius:8px; border:2px solid transparent; max-width:100%; }
+  .subcard-row:last-child { margin-bottom:0; }
+  .subcard-row--alerta { border-color:var(--vermelho); background:var(--vermelho-bg); }
+  /* Destaque de quem está no verde (acima do ritmo esperado): dourado, não verde —
+     verde já é o status (bateu o ritmo); dourado é a cor de "destaque" no resto do
+     painel (Top Closer, Top GC, medalhas do pódio). Fundo mais sutil que o alerta
+     vermelho de propósito: elogio não pode gritar mais alto que alerta. */
+  .subcard-row--destaque { border-color:var(--dourado); background:var(--dourado-bg-leve); }
+  .subcard-icone { margin-right:2px; }
+  .subcard-avatar { position:relative; overflow:hidden; width:26px; height:26px; border-radius:50%; background:var(--cinza-bg); color:var(--texto); font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .subcard-avatar img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:50%; }
+  /* Nome nunca corta com "..." — se não couber numa linha, quebra pra segunda linha inteiro. */
+  .subcard-nome { flex:1 1 auto; min-width:0; font-size:13px; font-weight:600; white-space:normal; overflow-wrap:break-word; line-height:1.15; }
+  .subcard-bar-wrap { flex:0 0 auto; height:10px; background:var(--cinza-bg); border-radius:999px; overflow:hidden; }
+  .subcard-bar-fill { height:100%; border-radius:999px; max-width:100%; }
+  .subcard-pct { font-size:13px; font-weight:800; width:56px; text-align:right; flex-shrink:0; }
+  .subcard-rows { flex:1 1 auto; display:flex; flex-direction:column; justify-content:center; min-width:0; }
+
+  .subcards-grid-2col {
+    grid-column: span 12;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .subcards-grid-2col > .subcard { min-width: 0; }
+  .subcard--grande { min-width:0; padding:16px 18px; }
+  .subcard--grande .subcard-title { font-size:14px; margin-bottom:12px; }
+  .subcard--grande .subcard-row { gap:14px; margin-bottom:10px; }
+  .subcard--grande .subcard-avatar { width:50px; height:50px; font-size:18px; }
+  /* Largura fixa (não flexível): todo nome pára no mesmo ponto, então toda barra
+     começa exatamente no mesmo x — é isso que dá o alinhamento simétrico entre elas. */
+  .subcard--grande .subcard-nome { font-size:22px; flex:0 0 260px; width:260px; }
+  .subcard--grande .subcard-bar-wrap { flex:1 1 auto; min-width:80px; height:14px; }
+  .subcard--grande .subcard-pct { font-size:20px; width:80px; }
+
+  .subcard--media { min-width:0; padding:9px 11px; }
+  .subcard--media .subcard-title { font-size:12px; margin-bottom:7px; }
+  .subcard--media .subcard-row { gap:9px; margin-bottom:6px; }
+  .subcard--media .subcard-avatar { width:32px; height:32px; font-size:13px; }
+  .subcard--media .subcard-nome { font-size:15px; flex:0 0 150px; width:150px; }
+  .subcard--media .subcard-bar-wrap { flex:1 1 auto; min-width:50px; height:9px; }
+  .subcard--media .subcard-pct { font-size:14px; width:50px; }
   .footer { grid-column: span 12; font-size:12px; color:var(--texto-sub); text-align:center; margin-top:6px; }
   .empty-msg { padding:44px; text-align:center; color:var(--texto-sub); }
   .theme-toggle {
@@ -143,46 +207,6 @@
     cursor: pointer;
   }
   .theme-toggle:hover { border-color: var(--dourado); }
-
-  /* ===== "Corrida" — barra 3D grande, estilo gráfico de squads (referência do Felipe) ===== */
-  .corrida-titulo { font-weight:800; font-style:italic; text-transform:uppercase; text-align:center; font-size:24px; margin-bottom:22px; letter-spacing:.02em; }
-  .corrida-row { display:flex; align-items:center; gap:18px; margin-bottom:28px; }
-  .corrida-row:last-child { margin-bottom:10px; }
-  .corrida-logo-wrap { display:flex; flex-direction:column; align-items:center; gap:7px; flex-shrink:0; width:112px; }
-  .corrida-logo { position:relative; overflow:hidden; width:112px; height:112px; border-radius:16px; background:var(--cinza-bg); color:var(--texto); font-weight:800; font-size:18px; display:flex; align-items:center; justify-content:center; box-shadow:0 7px 16px rgba(0,0,0,.35); flex-shrink:0; }
-  .corrida-logo img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
-  .corrida-posicao { font-weight:800; font-size:16px; color:var(--texto-sub); }
-  .corrida-bar-area { position:relative; flex:1 1 auto; min-width:0; height:92px; }
-  .corrida-bar {
-    position:relative; height:100%; min-width:6%;
-    border-radius:12px 4px 4px 12px;
-    display:flex; align-items:center; justify-content:center;
-    font-weight:800; font-style:italic; font-size:27px; color:#1a1a1a;
-    box-shadow: 0 11px 0 rgba(0,0,0,.2), 0 16px 22px rgba(0,0,0,.3);
-    transition: width .6s ease;
-  }
-  .corrida-bar::after {
-    content:""; position:absolute; top:4px; bottom:-11px; right:-20px; width:28px;
-    background: linear-gradient(120deg, rgba(0,0,0,.18), rgba(0,0,0,.42));
-    clip-path: polygon(0 0, 100% 22%, 100% 100%, 0 78%);
-  }
-  .corrida-bar.cor-1 { background: linear-gradient(180deg, #74d385 0%, #3ddc97 45%, #279e68 100%); }
-  .corrida-bar.cor-2 { background: linear-gradient(180deg, #ffd370 0%, #fbbf24 45%, #cf8f0e 100%); }
-  .corrida-bar-nome { text-shadow: 0 1px 0 rgba(255,255,255,.25); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:92%; }
-  .corrida-bar-valor { position:absolute; top:50%; transform:translateY(-50%); margin-left:16px; font-weight:800; font-size:24px; white-space:nowrap; }
-  .corrida-eixo { display:flex; justify-content:space-between; margin-top:6px; font-size:14px; color:var(--texto-sub); }
-  .corrida-eixo-wrap { margin-left:130px; }
-  .link-outro-painel {
-    margin-top: 8px;
-    display: inline-block;
-    font-size: 13px;
-    color: var(--texto-sub);
-    text-decoration: none;
-    border: 1px solid var(--borda);
-    padding: 7px 14px;
-    border-radius: 999px;
-  }
-  .link-outro-painel:hover { border-color: var(--azul); color: var(--azul); }
   .pagina-nav { position:fixed; right:10px; bottom:6px; display:flex; gap:4px; z-index:50; opacity:.3; transition:opacity .2s ease; }
   .pagina-nav:hover { opacity:1; }
   .pagina-nav-btn { width:18px; height:18px; border-radius:50%; border:1px solid var(--borda); background:var(--card-bg); color:var(--texto-sub); font-size:11px; line-height:1; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0; }
@@ -194,14 +218,13 @@
   <div class="header">
     <div>
       <img class="logo" src="logo.png" alt="SeuBoné">
-      <div class="brand-sub">Painel Comercial · Squads</div>
+      <div class="brand-sub">Painel Comercial</div>
       <div class="semana" id="semanaLabel">carregando…</div>
     </div>
     <div class="meta-info">
+      <div id="diaLabel"></div>
       <div id="atualizadoLabel">última leitura: —</div>
       <button class="theme-toggle" id="btnTema" onclick="alternarTema()">☀️ Tema claro</button>
-      <br>
-      <a class="link-outro-painel" href="index.html">← Painel de vendedores</a>
     </div>
   </div>
 
@@ -219,15 +242,16 @@
   </div>
 
 <script>
-// >>> Mesma URL/deploy do Apps Script do painel de vendedores — só troca o parâmetro
-// "painel=squads" pra ler a aba de resultado semanal/mensal dos squads em vez da aba
-// de vendedores. Sem "painel=squads" continua servindo a aba de vendedores de sempre. <<<
+// >>> URL do Apps Script (doGet) <<<
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx_8R_UGyyXDK68tazvTc9wj0-ECxbtCvHHOXArkAtvtTjX5uoe2kVCtnG2uxlkfkMxkA/exec?key=comercialpainel2026";
 
 const REFRESH_MS = 10 * 60 * 1000; // 10 min
 const CLOSER_SQUADS = ["FALCONS", "STARK"];
-const GC_SQUADS = ["MAVERICK", "NEXUS"];
+const GC_SQUADS = ["NEXUS", "MAVERICK"];
 const EXCLUDE_SQUADS = ["TUBA", "SUPERNOVA", "BIGBANG", ""];
+
+let chartCloser = null;
+let chartGC = null;
 
 function fmtBRL(v) {
   return "R$ " + Number(v || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -240,72 +264,256 @@ function toNum(v) {
   const n = parseFloat(String(v || "").replace(",", "."));
   return isNaN(n) ? 0 : n;
 }
-
-function statusFromRatio(ratio) {
-  if (ratio >= 0.95) return "verde";
-  if (ratio >= 0.7) return "ambar";
-  return "vermelho";
+function getInitials(nome) {
+  return String(nome || "").trim().split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase();
 }
-
-// ===== Tema claro/escuro =====
-let ultimoDados = null;
-
-function aplicarTema(tema) {
-  document.documentElement.setAttribute("data-theme", tema);
-  const btn = document.getElementById("btnTema");
-  if (btn) btn.textContent = tema === "dark" ? "☀️ Tema claro" : "🌙 Tema escuro";
-  try { localStorage.setItem("painelSquadsTema", tema); } catch (e) { /* segue sem salvar */ }
-  if (ultimoDados) render(ultimoDados);
+// Gera o nome de arquivo esperado na pasta /fotos a partir do nome do vendedor.
+// Ex: "João Silva" -> "joao-silva" (procura joao-silva.jpg, .jpeg, .png e .webp).
+function slugFoto(nome) {
+  return String(nome || "")
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
-function alternarTema() {
-  const atual = document.documentElement.getAttribute("data-theme") || "dark";
-  aplicarTema(atual === "dark" ? "light" : "dark");
+const EXT_FOTOS = ["jpg", "jpeg", "png", "webp"];
+// Tenta cada extensão em sequência; se nenhuma existir, some e deixa aparecer as iniciais por baixo.
+function fotoAttrOnerror(idx) {
+  const extsJs = "['" + EXT_FOTOS.join("','") + "']";
+  return `data-tentativa="${idx}" onerror="
+    var i = parseInt(this.dataset.tentativa, 10) + 1;
+    var exts = ${extsJs};
+    if (i < exts.length) { this.dataset.tentativa = i; this.src = this.dataset.base + '.' + exts[i]; }
+    else { this.remove(); }
+  "`;
 }
-(function iniciarTema() {
-  let salvo = "dark";
-  try { salvo = localStorage.getItem("painelSquadsTema") || "dark"; } catch (e) { /* ignora */ }
-  document.documentElement.setAttribute("data-theme", salvo);
-})();
-
-// Tira o código numérico do início (ex: "082026 SEMANA 2 (AGO)" -> "SEMANA 2 (AGO)")
+function avatarHtml(nome, avatarClass, baseClass) {
+  const slug = slugFoto(nome);
+  const base = "fotos/" + slug;
+  const classes = (baseClass || "avatar") + (avatarClass ? " " + avatarClass : "");
+  return `<div class="${classes}">
+    <img src="${base}.${EXT_FOTOS[0]}" data-base="${base}" alt="" ${fotoAttrOnerror(0)}>
+    ${getInitials(nome)}
+  </div>`;
+}
+// Calcula em que dia útil da semana comercial estamos, pra servir de base da projeção
+// (faturado até agora ÷ esse número de dias × 5 dias úteis).
+// Regra do negócio: semana vai de sexta a quinta (fechamento); sábado e domingo não são
+// dias à parte, o resultado deles entra na conta de sexta (dia 1). O dia comercial vira
+// às 09:00 da manhã (não à meia-noite) — até lá, ainda conta como o dia anterior, dando
+// tempo de lançamento tardio/backoffice consolidar o dia anterior antes de usá-lo na média.
+function calcularDiaComercial() {
+  const agora = new Date();
+  const referencia = new Date(agora);
+  if (agora.getHours() < 9) referencia.setDate(referencia.getDate() - 1); // antes das 9h, ainda é "ontem" pra essa conta
+  const mapaSlot = { 5: 1, 6: 1, 0: 1, 1: 2, 2: 3, 3: 4, 4: 5 }; // getDay(): dom0 seg1 ter2 qua3 qui4 sex5 sab6
+  const diaAtual = mapaSlot[referencia.getDay()];
+  return { diaAtual, diasCompletos: diaAtual };
+}
+// Tira o código numérico do início (ex: "072026 SEMANA 4 (JUL)" -> "SEMANA 4 (JUL)")
 function limparSemanaLabel(label) {
   const s = String(label || "");
   const idx = s.toUpperCase().indexOf("SEMANA");
   return idx >= 0 ? s.slice(idx).trim() : s.trim();
 }
 
-// ===== Lê a aba de SQUADS (semanal + mensal) =====
-// Estrutura confirmada linha a linha em 13/08/2026: soma dos vendedores de cada squad
-// bate exatamente com a linha-resumo do squad (testado nos 4 squads, semana e mês, sem
-// divergência). Não existe Meta Mensal por vendedor na aba — só no nível de squad, por
-// isso este painel trabalha só com o total do squad (confirmado com o Felipe).
-function parseSquads(payload) {
+function parseDados(payload) {
   const rows = payload.rows || [];
-  const semanaLabel = rows[0] ? String(rows[0][0] || "").trim() : "";
-  const mesLabel = rows[0] ? String(rows[0][9] || "").trim().replace(/[()]/g, "") : "";
 
-  const headerIdx = rows.findIndex(r => r[1] === "Squad" && r[2] === "Meta");
-  const squads = [];
-  if (headerIdx >= 0) {
-    for (let i = headerIdx + 1; i < rows.length; i++) {
-      const r = rows[i];
-      const nome = String(r[0] || "").trim().toUpperCase();
-      if (!nome) break; // linha em branco = fim da tabela de squads
-      if (EXCLUDE_SQUADS.includes(nome)) continue;
-      const metaSemanal = toNum(r[2]);
-      const faturadoSemanal = toNum(r[3]);
-      const metaMensal = toNum(r[12]);
-      const faturadoMensal = toNum(r[13]);
-      squads.push({
-        nome,
-        metaSemanal, faturadoSemanal,
-        pctSemanal: metaSemanal > 0 ? faturadoSemanal / metaSemanal : 0,
-        metaMensal, faturadoMensal,
-        pctMensal: metaMensal > 0 ? faturadoMensal / metaMensal : 0
-      });
-    }
+  const weekRow = rows.find(r => r.some(c => typeof c === "string" && c.includes("Dia da semana atual")));
+  const semanaLabel = weekRow ? weekRow[0] : "";
+  let dia = null;
+  if (weekRow) {
+    const idx = weekRow.findIndex(c => typeof c === "string" && c.includes("Dia da semana atual"));
+    dia = toNum(weekRow[idx + 1]);
   }
-  return { semanaLabel, mesLabel, squads };
+
+  const paceRow = rows.find(r => r.some(c => typeof c === "string" && c.includes("% de realização esperado")));
+  let ritmoEsperado = null;
+  if (paceRow) {
+    const idx = paceRow.findIndex(c => typeof c === "string" && c.includes("% de realização esperado"));
+    ritmoEsperado = toNum(paceRow[idx + 1]);
+  }
+
+  const headerIdx = rows.findIndex(r => r[0] === "Vendedor");
+  const totalIdx = rows.findIndex(r => r[0] === "Total");
+  const vendorRows = headerIdx >= 0 && totalIdx > headerIdx ? rows.slice(headerIdx + 1, totalIdx) : [];
+
+  const vendedores = vendorRows
+    .filter(r => r[0] && String(r[0]).trim() !== "")
+    .map(r => ({
+      nome: String(r[0]).trim(),
+      meta: toNum(r[1]),
+      fat: toNum(r[2]),
+      pct: toNum(r[3]),
+      squad: String(r[8] || "").trim().toUpperCase()
+    }))
+    .filter(v => !EXCLUDE_SQUADS.includes(v.squad));
+
+  let totalMeta = 0, totalFat = 0;
+  if (totalIdx >= 0) {
+    totalMeta = toNum(rows[totalIdx][1]);
+    totalFat = toNum(rows[totalIdx][2]);
+  }
+
+  return { semanaLabel, dia, ritmoEsperado, vendedores, totalMeta, totalFat };
+}
+
+function groupStats(vendedores, squads) {
+  const grupo = vendedores.filter(v => squads.includes(v.squad));
+  const meta = grupo.reduce((s, v) => s + v.meta, 0);
+  const fat = grupo.reduce((s, v) => s + v.fat, 0);
+  const pct = meta > 0 ? fat / meta : 0;
+  const top3 = [...grupo].sort((a, b) => b.pct - a.pct).slice(0, 3);
+  const todos = [...grupo].sort((a, b) => b.pct - a.pct);
+  return { meta, fat, pct, top3, todos };
+}
+
+function statusFromRatio(ratio) {
+  if (ratio >= 0.95) return "verde";
+  if (ratio >= 0.7) return "ambar";
+  return "vermelho";
+}
+function statusTexto(status) {
+  if (status === "verde") return "NO RITMO";
+  if (status === "ambar") return "ATENÇÃO";
+  return "ATRASADO";
+}
+function statusIcone(status) {
+  if (status === "verde") return "✅";
+  if (status === "ambar") return "⚠️";
+  return "🔴";
+}
+function statusCor(status) {
+  if (status === "verde") return getComputedStyle(document.documentElement).getPropertyValue("--verde").trim();
+  if (status === "ambar") return getComputedStyle(document.documentElement).getPropertyValue("--ambar").trim();
+  return getComputedStyle(document.documentElement).getPropertyValue("--vermelho").trim();
+}
+function corTexto() { return getComputedStyle(document.documentElement).getPropertyValue("--texto").trim(); }
+function corTextoSub() { return getComputedStyle(document.documentElement).getPropertyValue("--texto-sub").trim(); }
+function corGrid() { return getComputedStyle(document.documentElement).getPropertyValue("--grid-linha").trim(); }
+
+// ===== Tema claro/escuro =====
+let ultimoDados = null; // guarda o último payload renderizado, pra poder redesenhar sem rebuscar dados
+
+function aplicarTema(tema) {
+  document.documentElement.setAttribute("data-theme", tema);
+  const btn = document.getElementById("btnTema");
+  if (btn) btn.textContent = tema === "dark" ? "☀️ Tema claro" : "🌙 Tema escuro";
+  try { localStorage.setItem("painelTema", tema); } catch (e) { /* ambiente sem localStorage, segue sem salvar */ }
+  if (ultimoDados) render(ultimoDados); // redesenha na hora com as cores certas, sem esperar o próximo refresh
+}
+
+function alternarTema() {
+  const atual = document.documentElement.getAttribute("data-theme") || "dark";
+  aplicarTema(atual === "dark" ? "light" : "dark");
+}
+
+(function iniciarTema() {
+  let salvo = "dark";
+  try { salvo = localStorage.getItem("painelTema") || "dark"; } catch (e) { /* ignora */ }
+  document.documentElement.setAttribute("data-theme", salvo);
+})();
+
+function podiumHtml(top3, avatarClass) {
+  if (!top3.length) return '<div class="empty-msg">Sem dados no período.</div>';
+  const medals = ["medal-1", "medal-2", "medal-3"];
+  const labels = ["1º", "2º", "3º"];
+  return top3.map((v, i) => `
+    <div class="podium-row">
+      <div class="medal ${medals[i]}">${labels[i]}</div>
+      ${avatarHtml(v.nome, avatarClass)}
+      <div>
+        <div class="p-nome">${v.nome}</div>
+        <div class="p-squad">${v.squad}</div>
+      </div>
+      <div class="p-right">
+        <div class="p-pct">${fmtPct(v.pct)}</div>
+      </div>
+    </div>
+  `).join("");
+}
+
+// ===== Perfis de venda (categorias definidas pelo Felipe, independentes de squad) =====
+// Layout em 3 linhas: grandes (30+/50+/300+) > hunter+farmers > resto (preenche o espaço)
+const CATEGORIAS_TOPO = [
+  { nome: "30+", membros: ["PAULO SERGIO", "VICTOR VARELA", "GIOVANI AUGUSTO", "FERNANDA ARAUJO"] },
+  { nome: "50+", membros: ["EMILY DANTAS", "CAMILLA MARINHO", "JAILTON", "CAIO TARGINO", "IGOR NEVES", "VICTOR BRITO", "LUCAS SANTOS", "ALEXSANDRA WHENDELL"] },
+  { nome: "Hunter Reativação", membros: ["TAYNARA SOARES", "VICTOR MEDEIROS", "GABRIEL VINICIUS"] },
+  { nome: "300+", membros: ["SABRINA SILVA", "EMANUEL PEREIRA"] }
+];
+const CATEGORIAS_FARMERS = [
+  { nome: "Cliente Final Pequeno - Funcionário", membros: ["ANDERSON CARLOS", "MARCELO MOREIRA", "ANA BEATRIZ", "VICTOR CLEMERSON"] },
+  { nome: "Cliente Final Pequeno - Sócio", membros: ["GUILHERME MATIAS", "CLEYTON ANDRADE", "AMANDA ALVES", "STEPHANIE OLIVEIRA"] },
+  { nome: "Cliente Final Grande - Funcionário", membros: ["WALTER GALDINO", "ANDERSON GABRIEL"] },
+  { nome: "Cliente Final Grande - Sócio", membros: ["VINICIUS BARROS", "LUIZ CAVALCANTE"] }
+];
+const CATEGORIAS_RESTO = [
+  { nome: "Agência + Brindeiro", membros: ["JONATHAN SILVA", "LUCAS MATHEUS"] },
+  { nome: "Revendedor", membros: ["YURI PINHEIRO"] },
+  { nome: "Hunter Outbound", membros: ["ARTHUR FELIX"] }
+];
+
+function normalizar(s) {
+  return String(s || "").toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+}
+
+// Tolera variações de nome entre a lista do Felipe e a planilha
+// (ex: "EMILY" na planilha vs "EMILY DANTAS" na lista; "P MARANHAO" vs "PEDRO MARANHÃO")
+function encontrarVendedor(nomeBusca, todosVendedores) {
+  const alvo = normalizar(nomeBusca);
+  let achado = todosVendedores.find(v => normalizar(v.nome) === alvo);
+  if (achado) return achado;
+  const palavrasAlvo = alvo.split(/\s+/).filter(p => p.length >= 3);
+  achado = todosVendedores.find(v => {
+    const palavrasV = normalizar(v.nome).split(/\s+/).filter(p => p.length >= 3);
+    return palavrasV.some(p => palavrasAlvo.includes(p));
+  });
+  return achado || null;
+}
+
+function subCardHtml(categoria, todosVendedores, ritmoBase, variante) {
+  const membros = categoria.membros
+    .map(nome => encontrarVendedor(nome, todosVendedores))
+    .filter(Boolean);
+  if (!membros.length) return "";
+  // ritmoBase já vem calculado do render(): do dia 1 ao 4 é o ritmo esperado do dia
+  // (ou 1 se a planilha não tiver um valor válido); no dia 5 (semana fechada) vem
+  // fixo em 1, pra comparar direto contra 100% da meta em vez do ritmo — evita o
+  // status virar sempre verde/destaque quando o ritmo esperado não bate mais com
+  // os dados da semana que já fechou.
+  const ordenados = [...membros].sort((a, b) => b.pct - a.pct);
+  const linhas = ordenados.map(v => {
+    const ratio = v.pct / ritmoBase;
+    const status = statusFromRatio(ratio);
+    const cor = "var(--" + status + ")";
+    // Escala absoluta: 100% de largura = 100% da meta batida, não o topo do grupo.
+    // Evita que o bar do 1º lugar sempre pareça "cheio" mesmo estando abaixo da meta,
+    // e evita comprimir os demais quando alguém supera 100%.
+    const largura = Math.min(Math.max(v.pct * 100, 3), 100);
+    const emAlerta = status === "vermelho";
+    const emDestaque = status === "verde";
+    const classeStatus = emAlerta ? ' subcard-row--alerta' : (emDestaque ? ' subcard-row--destaque' : '');
+    const iconeStatus = emAlerta ? '⚠️' : (emDestaque ? '⭐' : '');
+    const iconeHtml = iconeStatus ? `<span class="subcard-icone" title="${emAlerta ? 'Abaixo do ritmo esperado' : 'Acima do ritmo esperado'}" aria-hidden="true">${iconeStatus}</span> ` : '';
+    return `
+      <div class="subcard-row${classeStatus}">
+        ${avatarHtml(v.nome, "", "subcard-avatar")}
+        <div class="subcard-nome" title="${v.nome}">${iconeHtml}${v.nome}</div>
+        <div class="subcard-bar-wrap"><div class="subcard-bar-fill" style="width:${largura}%; background:${cor}"></div></div>
+        <div class="subcard-pct">${fmtPct(v.pct)}</div>
+      </div>
+    `;
+  }).join("");
+  const classeExtra = variante ? ' subcard--' + variante : '';
+  return `
+    <div class="subcard${classeExtra}">
+      <div class="subcard-title">${categoria.nome}</div>
+      <div class="subcard-rows">${linhas}</div>
+    </div>
+  `;
 }
 
 function ladderHtml(meta, fat) {
@@ -325,161 +533,199 @@ function ladderHtml(meta, fat) {
   }).join("");
 }
 
-// Logo do squad em logos/{nome}.png (ex: logos/stark.png). Se o arquivo ainda não foi
-// subido ou não existir, cai pras 3 primeiras letras do squad no lugar — nunca quebra.
-const EXT_LOGO = ["png", "jpg", "jpeg", "webp"];
-function squadLogoHtml(nome) {
-  const slug = String(nome || "").toLowerCase().trim();
-  const base = "logos/" + slug;
-  const abrev = String(nome || "").slice(0, 3).toUpperCase();
-  const extsJs = "['" + EXT_LOGO.join("','") + "']";
-  const onerror = `data-tentativa="0" onerror="
-    var i = parseInt(this.dataset.tentativa, 10) + 1;
-    var exts = ${extsJs};
-    if (i < exts.length) { this.dataset.tentativa = i; this.src = this.dataset.base + '.' + exts[i]; }
-    else { this.remove(); }
-  "`;
-  return `<div class="corrida-logo">
-    <img src="${base}.${EXT_LOGO[0]}" data-base="${base}" alt="" ${onerror}>
-    ${abrev}
-  </div>`;
-}
-
-// Escala do eixo: escolhe o menor "número redondo" que ainda cobre o maior valor com
-// uma folga de ~5% — é assim que o próprio Google Sheets escala o eixo dos gráficos
-// de referência (ex: eixo até 100% quando o maior valor é ~92%, até 40% quando é ~40%).
-function eixoMaxNice(maxPct) {
-  const candidatos = [0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1, 1.2, 1.4, 1.6, 1.8, 2, 2.5, 3, 4, 5, 6, 8, 10];
-  for (const c of candidatos) { if (maxPct <= c * 0.995) return c; }
-  return Math.ceil(maxPct * 1.1 * 10) / 10;
-}
-
-// Eixo COMPARTILHADO entre os 2 cards da mesma página (Closer e GC) — se cada card
-// calculasse o próprio eixo isoladamente, um squad com % bem menor podia aparecer com
-// barra maior só porque o card dele tinha uma escala menor (bug real, reportado pelo
-// Felipe: Maverick 64% parecia maior que Stark 100% porque cada um tinha seu eixo).
-function eixoMaxCompartilhado(gruposDeSquads, pctKey) {
-  const todos = [].concat(...gruposDeSquads);
-  const maxPct = Math.max(...todos.map(s => s[pctKey]), 0.01);
-  return eixoMaxNice(maxPct);
-}
-
-// "Corrida" entre os 2 squads do mesmo grupo (Closer: Falcons x Stark · GC: Maverick x
-// Nexus) — barra 3D grande, no mesmo espírito do gráfico de referência do Felipe.
-// eixoMax é sempre o mesmo pros dois cards da página (ver eixoMaxCompartilhado acima),
-// pra barra maior nunca representar um % menor.
-function corridaHtml(titulo, squadsDoGrupo, periodo, eixoMax) {
-  if (!squadsDoGrupo.length) return `<div class="corrida-titulo">${titulo}</div><div class="empty-msg">Sem dados no período.</div>`;
-  const pctKey = periodo === "mensal" ? "pctMensal" : "pctSemanal";
-  const ordenado = [...squadsDoGrupo].sort((a, b) => b[pctKey] - a[pctKey]);
-  const cores = ["cor-1", "cor-2"];
-
-  const linhas = ordenado.map((s, i) => {
-    const pct = s[pctKey];
-    const largura = Math.min(Math.max((pct / eixoMax) * 100, 6), 100);
-    return `
-      <div class="corrida-row">
-        <div class="corrida-logo-wrap">
-          ${squadLogoHtml(s.nome)}
-          <div class="corrida-posicao">${i === 0 ? "1º" : "2º"}</div>
-        </div>
-        <div class="corrida-bar-area">
-          <div class="corrida-bar ${cores[i] || 'cor-2'}" style="width:${largura}%">
-            <span class="corrida-bar-nome">${s.nome}</span>
-          </div>
-          <div class="corrida-bar-valor" style="left:${largura}%">${fmtPct(pct)}</div>
-        </div>
-      </div>
-    `;
-  }).join("");
-
-  const ticks = [0, 0.25, 0.5, 0.75, 1].map(f => eixoMax * f);
-  const eixoHtml = `<div class="corrida-eixo-wrap"><div class="corrida-eixo">${ticks.map(t => `<span>${fmtPct(t)}</span>`).join("")}</div></div>`;
-
-  return `<div class="corrida-titulo">${titulo}</div>${linhas}${eixoHtml}`;
-}
-
-function somaGrupo(squads, nomes, metaKey, fatKey) {
-  const grupo = squads.filter(s => nomes.includes(s.nome));
-  const meta = grupo.reduce((acc, s) => acc + s[metaKey], 0);
-  const fat = grupo.reduce((acc, s) => acc + s[fatKey], 0);
-  return { meta, fat, pct: meta > 0 ? fat / meta : 0, grupo };
+function desenharGrafico(canvasId, chartRefSetter, chartRefAtual, vendedores, ritmoBase) {
+  if (chartRefAtual) chartRefAtual.destroy();
+  const ctx = document.getElementById(canvasId).getContext("2d");
+  const ordenado = [...vendedores].sort((a, b) => b.pct - a.pct);
+  const cores = ordenado.map(v => {
+    const ratio = v.pct / ritmoBase;
+    return statusCor(statusFromRatio(ratio));
+  });
+  const maiorValor = Math.max(...ordenado.map(v => v.pct * 100), 10);
+  const chart = new Chart(ctx, {
+    type: "bar",
+    plugins: [ChartDataLabels],
+    data: {
+      labels: ordenado.map(v => v.nome),
+      datasets: [{
+        data: ordenado.map(v => +(v.pct * 100).toFixed(1)),
+        backgroundColor: cores,
+        borderRadius: 8,
+        barPercentage: 0.62,
+        categoryPercentage: 0.78
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { top: 26 } },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: { label: (ctx) => ctx.parsed.y.toLocaleString("pt-BR", { minimumFractionDigits: 1 }) + "%" }
+        },
+        datalabels: {
+          anchor: "end",
+          align: "top",
+          color: corTexto(),
+          font: { weight: "700", size: 12 },
+          formatter: (v) => v.toLocaleString("pt-BR", { minimumFractionDigits: 1 }) + "%"
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          suggestedMax: maiorValor * 1.18,
+          ticks: { color: corTextoSub(), callback: (v) => v + "%" },
+          grid: { color: corGrid() }
+        },
+        x: {
+          ticks: { color: corTexto(), font: { size: 12 }, maxRotation: 40, minRotation: 0 },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+  chartRefSetter(chart);
 }
 
 function render(dados) {
   ultimoDados = dados;
-  const { semanaLabel, mesLabel, squads } = dados;
+  const diasUteisSemana = 5;
+  const { semanaLabel, ritmoEsperado, vendedores, totalMeta, totalFat } = dados;
+  const { diaAtual, diasCompletos } = calcularDiaComercial();
+  const pctAtual = totalMeta > 0 ? totalFat / totalMeta : 0;
+  // Dia 1 a 4: compara contra o ritmo esperado do dia. Dia 5 (semana fechada): usa
+  // percentual final direto (base 1 = 100% da meta), porque nesse ponto o "ritmo
+  // esperado" da planilha já não corresponde mais aos dados da semana que fechou —
+  // combinado com o Felipe pra parar o card de virar sempre verde no fechamento.
+  const usarPercentualFinal = diaAtual >= 5;
+  const ritmoBaseGeral = usarPercentualFinal ? 1 : (ritmoEsperado > 0 ? ritmoEsperado : 1);
+  const ratio = pctAtual / ritmoBaseGeral;
+  const status = statusFromRatio(ratio);
 
   document.getElementById("semanaLabel").textContent = limparSemanaLabel(semanaLabel) || "Semana comercial";
+  document.getElementById("diaLabel").textContent = `Dia ${diaAtual} de ${diasUteisSemana} da semana`;
   document.getElementById("atualizadoLabel").textContent = "última leitura: " + new Date().toLocaleString("pt-BR");
 
-  const closerSem = somaGrupo(squads, CLOSER_SQUADS, "metaSemanal", "faturadoSemanal");
-  const gcSem = somaGrupo(squads, GC_SQUADS, "metaSemanal", "faturadoSemanal");
-  const eixoMaxSem = eixoMaxCompartilhado([closerSem.grupo, gcSem.grupo], "pctSemanal");
+  const closer = groupStats(vendedores, CLOSER_SQUADS);
+  const gc = groupStats(vendedores, GC_SQUADS);
+  const closerStatus = statusFromRatio(closer.pct / ritmoBaseGeral);
+  const gcStatus = statusFromRatio(gc.pct / ritmoBaseGeral);
 
-  const closerMes = somaGrupo(squads, CLOSER_SQUADS, "metaMensal", "faturadoMensal");
-  const gcMes = somaGrupo(squads, GC_SQUADS, "metaMensal", "faturadoMensal");
-  const eixoMaxMes = eixoMaxCompartilhado([closerMes.grupo, gcMes.grupo], "pctMensal");
-  const totalMetaMes = closerMes.meta + gcMes.meta;
-  const totalFatMes = closerMes.fat + gcMes.fat;
-  const pctMes = totalMetaMes > 0 ? totalFatMes / totalMetaMes : 0;
-  // Não existe "ritmo esperado" pro mês (o conceito é só semanal, dia-a-dia) — aqui o
-  // status usa a própria % do mês contra 100% da meta mensal, sem marcador de projeção.
-  const statusMes = statusFromRatio(pctMes);
-  const barPctMes = Math.min(pctMes * 100, 100);
+  const barPct = Math.min(pctAtual * 100, 100);
+  const markerPct = Math.min((ritmoEsperado || 0) * 100, 100);
+
+  // Projeção: no ritmo dos dias já maduros (fechados até 09:00 de hoje), quanto deve fechar até o fim da semana.
+  // O dia em andamento nunca entra no divisor — só passa a contar a partir das 09:00 do dia seguinte.
+  const projecaoFat = diasCompletos > 0 ? (totalFat / diasCompletos) * diasUteisSemana : totalFat;
+  const projecaoPct = totalMeta > 0 ? projecaoFat / totalMeta : 0;
+  const statusProjecao = statusFromRatio(projecaoPct);
+  const projMarkerPct = Math.min(projecaoPct * 100, 100);
+  // Se as duas marcações ficarem muito próximas (ou iguais), a Projeção Semanal prevalece:
+  // ela fica na posição/altura padrão (mais perto da barra) e o Esperado Atual sobe para não sobrepor.
+  const marcadoresProximos = Math.abs(projMarkerPct - markerPct) < 8;
 
   document.getElementById("conteudo").innerHTML = `
     <div class="pagina" data-pagina="0">
       <div class="grid">
-        <div class="card rank-card rank-card--destaque">
-          ${corridaHtml("Corrida Semanal Closer", closerSem.grupo, "semanal", eixoMaxSem)}
+        <div class="card hero">
+          <div class="hero-top">
+            <div>
+              <div class="card-label">Resultado semanal · time comercial (closer + gc)</div>
+              <div class="hero-num" style="color: var(--${status === 'vermelho' ? 'vermelho' : status === 'ambar' ? 'ambar' : 'verde'})">${fmtPct(pctAtual)}</div>
+              <div class="hero-sub">${fmtBRL(totalFat)} faturado de ${fmtBRL(totalMeta)} de meta semanal</div>
+            </div>
+          </div>
+          <div class="bar-wrap">
+            <div class="bar-fill" style="width:${barPct}%; background:var(--${status})"></div>
+            <div class="bar-marker" style="left:${markerPct}%; z-index:1"></div>
+            <div class="bar-marker-label${marcadoresProximos ? ' bar-marker-label--alt' : ''}" style="left:${markerPct}%; z-index:1">Esperado Atual ${fmtPct(ritmoEsperado)}</div>
+            <div class="bar-marker" style="left:${projMarkerPct}%; background:var(--${statusProjecao}); z-index:2"></div>
+            <div class="bar-marker-label" style="left:${projMarkerPct}%; color:var(--${statusProjecao}); z-index:2">Projeção Semanal ${fmtPct(projecaoPct)}</div>
+          </div>
+          <div class="bar-legend"><span>0%</span><span>100% da meta</span></div>
+        </div>
+
+        <div class="card ladder">
+          <div class="card-label">🪜 Régua — quanto falta para bater cada patamar da meta</div>
+          <div class="ladder-row">${ladderHtml(totalMeta, totalFat)}</div>
         </div>
 
         <div class="card rank-card rank-card--destaque">
-          ${corridaHtml("Corrida Semanal Gerentes de Contas", gcSem.grupo, "semanal", eixoMaxSem)}
+          <div class="card-label"><span class="dot dot-dourado"></span> Top Closer (Inside Sales)</div>
+          <div class="group-total">
+            <div class="pct" style="color:var(--${closerStatus === 'vermelho' ? 'vermelho' : closerStatus === 'ambar' ? 'ambar' : 'verde'})">${fmtPct(closer.pct)}</div>
+            <div class="desc">${fmtBRL(closer.fat)} de ${fmtBRL(closer.meta)} de meta do grupo</div>
+          </div>
+          ${podiumHtml(closer.top3, "avatar-dourado")}
+        </div>
+
+        <div class="card rank-card rank-card--destaque">
+          <div class="card-label"><span class="dot dot-dourado"></span> Top GC (Gestão de Contas)</div>
+          <div class="group-total">
+            <div class="pct" style="color:var(--${gcStatus === 'vermelho' ? 'vermelho' : gcStatus === 'ambar' ? 'ambar' : 'verde'})">${fmtPct(gc.pct)}</div>
+            <div class="desc">${fmtBRL(gc.fat)} de ${fmtBRL(gc.meta)} de meta do grupo</div>
+          </div>
+          ${podiumHtml(gc.top3, "avatar-dourado")}
         </div>
       </div>
     </div>
 
     <div class="pagina" data-pagina="1">
       <div class="grid">
-        <div class="card hero">
-          <div class="hero-top">
-            <div>
-              <div class="card-label">Resultado mensal por squad · time comercial (closer + gc) · ${mesLabel || 'mês'}</div>
-              <div class="hero-num" style="color: var(--${statusMes})">${fmtPct(pctMes)}</div>
-              <div class="hero-sub">${fmtBRL(totalFatMes)} faturado de ${fmtBRL(totalMetaMes)} de meta mensal</div>
-            </div>
-          </div>
-          <div class="bar-wrap">
-            <div class="bar-fill" style="width:${barPctMes}%; background:var(--${statusMes})"></div>
-          </div>
-          <div class="bar-legend"><span>0%</span><span>100% da meta mensal</span></div>
+        <div class="subcards-grid-2col">
+          ${CATEGORIAS_TOPO.map(cat => subCardHtml(cat, vendedores, ritmoBaseGeral, "grande")).join("")}
+        </div>
+      </div>
+    </div>
+
+    <div class="pagina" data-pagina="2">
+      <div class="grid">
+        <div class="subcards-grid-2col">
+          ${CATEGORIAS_FARMERS.map(cat => subCardHtml(cat, vendedores, ritmoBaseGeral, "grande")).join("")}
+          ${CATEGORIAS_RESTO.map(cat => subCardHtml(cat, vendedores, ritmoBaseGeral, "grande")).join("")}
+        </div>
+      </div>
+    </div>
+
+    <div class="pagina" data-pagina="3">
+      <div class="grid">
+        <div class="card chart-card">
+          <div class="card-label"><span class="dot dot-azul"></span> % da meta individual — Closer (Falcons + Stark)</div>
+          <div class="chart-wrap"><canvas id="chartCloser"></canvas></div>
         </div>
 
-        <div class="card ladder">
-          <div class="card-label">🪜 Régua do mês — quanto falta pra bater cada patamar</div>
-          <div class="ladder-row">${ladderHtml(totalMetaMes, totalFatMes)}</div>
+        <div class="card chart-card">
+          <div class="card-label"><span class="dot dot-dourado"></span> % da meta individual — GC (Maverick + Nexus)</div>
+          <div class="chart-wrap"><canvas id="chartGC"></canvas></div>
         </div>
 
-        <div class="card rank-card rank-card--destaque">
-          ${corridaHtml("Corrida Mensal Closer", closerMes.grupo, "mensal", eixoMaxMes)}
-        </div>
-
-        <div class="card rank-card rank-card--destaque">
-          ${corridaHtml("Corrida Mensal Gerentes de Contas", gcMes.grupo, "mensal", eixoMaxMes)}
+        <div class="footer">
+          Fonte: aba "Cópia de Gráfico Semanal TV - Premium" via Apps Script · atualiza a cada ~10 min ·
+          Falcons/Stark = squads Closer (Inside Sales) · Maverick/Nexus = squads GC (Gestão de Contas) ·
+          Squads TUBA/SUPERNOVA/BIGBANG excluídos (inativos na semana)
         </div>
       </div>
     </div>
   `;
 
+  desenharGrafico("chartCloser", (c) => { chartCloser = c; }, chartCloser, closer.todos, ritmoBaseGeral);
+  desenharGrafico("chartGC", (c) => { chartGC = c; }, chartGC, gc.todos, ritmoBaseGeral);
+
+  // Reaplica qual página está visível (o innerHTML acima recria os nós, então perde a classe a cada refresh de dado/tema)
   mostrarPagina(paginaAtual);
+  // Encolhe sozinho qualquer página cujo conteúdo tenha ficado mais alto que a tela —
+  // nunca mais corta uma linha, mesmo quando entram novos consultores/categorias.
   ajustarEscalaDasPaginas();
 }
 
 // Se o conteúdo de uma página não couber na altura disponível, aplica um zoom-out
-// proporcional até caber por completo, sem distorcer nada. Só encolhe, nunca amplia
-// (ampliar via transform aperta o layout interno numa largura menor que a real).
+// proporcional (largura e altura juntas) até caber por completo, sem distorcer nada.
+// OBS: só encolhe, nunca amplia — ampliar via transform força o navegador a calcular o
+// layout interno (flex/quebra de linha) numa largura menor que a real, o que já causou
+// nome cortado e barra vazando pra fora do card. Pra sobrar menos vazio na página quando
+// o conteúdo é curto, a página inteira é centralizada verticalmente (ver .pagina no CSS).
 function ajustarEscalaPagina(paginaEl) {
   const grid = paginaEl.querySelector(":scope > .grid");
   if (!grid) return;
@@ -503,11 +749,13 @@ function jsonpRequest(url) {
     const callbackName = "painelCallback_" + Date.now() + "_" + Math.floor(Math.random() * 1e6);
     const script = document.createElement("script");
     let timeoutId;
+
     function cleanup() {
       clearTimeout(timeoutId);
       delete window[callbackName];
       script.remove();
     }
+
     window[callbackName] = function(data) {
       resolve(data);
       cleanup();
@@ -520,6 +768,7 @@ function jsonpRequest(url) {
       reject(new Error("Tempo esgotado aguardando resposta do Apps Script"));
       cleanup();
     }, 25000);
+
     const sep = url.includes("?") ? "&" : "?";
     script.src = url + sep + "callback=" + callbackName + "&_=" + Date.now();
     document.body.appendChild(script);
@@ -528,43 +777,53 @@ function jsonpRequest(url) {
 
 async function carregarDados() {
   try {
-    const payload = await jsonpRequest(APPS_SCRIPT_URL + "&painel=squads");
+    const payload = await jsonpRequest(APPS_SCRIPT_URL);
     if (payload.error) throw new Error(payload.error);
-    render(parseSquads(payload));
+    const dados = parseDados(payload);
+    render(dados);
   } catch (e) {
+    // Só mostra a tela de erro se ainda não tiver nenhum dado carregado antes —
+    // assim uma falha passageira não apaga um painel que já estava funcionando.
     if (!ultimoDados) {
       document.getElementById("conteudo").innerHTML = `
         <div class="pagina pagina-ativa">
           <div class="grid">
             <div class="empty-msg" style="grid-column:span 12;">
               Erro ao carregar dados: ${e.message || e}<br>
-              Verifique se a URL do Apps Script está correta, se o deploy está com acesso "Qualquer pessoa"
-              e se a última versão implantada já tem o suporte a "painel=squads".
+              Verifique se a URL do Apps Script está correta e se o deploy está com acesso "Qualquer pessoa".
             </div>
           </div>
         </div>`;
     }
-    console.error("Erro ao carregar painel de squads:", e);
-    setTimeout(carregarDados, 30000);
+    console.error("Erro ao carregar painel:", e);
+    setTimeout(carregarDados, 30000); // tenta de novo em 30s, não espera os 10 min do ciclo normal
   }
 }
 
-// ===== Paginação por fade: 2 páginas (Semana / Mês) =====
-const DURACOES_PAGINA_MS = [25000, 25000];
+// ===== Paginação por fade: 4 páginas fixas, cada uma com seu próprio tempo de exibição =====
+// Página 1 (índice 0) = topo + Top Closer/Top GC · Página 2 (índice 1) = sub cards 30+/50+/300+/Hunter Reativação ·
+// Página 3 (índice 2) = sub cards Farmers + Agência/Revendedor/Brindeiro/Hunter Outbound ·
+// Página 4 (índice 3) = os dois gráficos individuais.
+// Nunca rola: cada página ocupa a tela inteira e a troca é um fade suave.
+const DURACOES_PAGINA_MS = [15000, 25000, 35000, 20000]; // tempo de exibição de cada página, nessa ordem
+const FADE_MS = 700; // duração do fade entre páginas (bate com a transição do CSS .pagina)
+
 let autoPaginacaoIniciada = false;
 let paginaAtual = 0;
-let direcaoPagina = 1;
+let direcaoPagina = 1; // 1 = avançando, -1 = voltando (vai e volta passando por todas, sem pular a do meio)
 let timerProximaPagina = null;
 
 function mostrarPagina(indice) {
   const paginas = document.querySelectorAll("#conteudo .pagina");
   paginas.forEach((p, i) => p.classList.toggle("pagina-ativa", i === indice));
 }
+
 function agendarProximaPagina() {
   clearTimeout(timerProximaPagina);
   const duracao = DURACOES_PAGINA_MS[paginaAtual] ?? 20000;
   timerProximaPagina = setTimeout(avancarPagina, duracao);
 }
+
 function avancarPagina() {
   const totalPaginas = document.querySelectorAll("#conteudo .pagina").length;
   const ultimoIndice = totalPaginas - 1;
@@ -572,6 +831,7 @@ function avancarPagina() {
     agendarProximaPagina();
     return;
   }
+  // Vai e volta (1ª → meio → última → meio → 1ª → ...), nunca pula direto da última pra primeira
   if (paginaAtual + direcaoPagina > ultimoIndice || paginaAtual + direcaoPagina < 0) {
     direcaoPagina *= -1;
   }
@@ -579,6 +839,10 @@ function avancarPagina() {
   mostrarPagina(paginaAtual);
   agendarProximaPagina();
 }
+
+// Salto manual (setinhas do canto inferior direito): pula pra próxima/anterior
+// na hora, sem esperar o tempo da página, e reinicia o timer da página nova.
+// Também realinha a direção do vai-e-volta automático a partir de onde a pessoa parou.
 function irPara(delta) {
   const totalPaginas = document.querySelectorAll("#conteudo .pagina").length;
   const ultimoIndice = totalPaginas - 1;
@@ -593,6 +857,7 @@ function irPara(delta) {
   mostrarPagina(paginaAtual);
   agendarProximaPagina();
 }
+
 function iniciarAutoPaginacao() {
   if (autoPaginacaoIniciada) return;
   autoPaginacaoIniciada = true;
@@ -610,7 +875,7 @@ function iniciarAutoPaginacao() {
 
 carregarDados();
 setInterval(carregarDados, REFRESH_MS);
-setTimeout(iniciarAutoPaginacao, 1500);
+setTimeout(iniciarAutoPaginacao, 1500); // dá tempo do primeiro carregamento renderizar antes de começar a paginar
 </script>
 
 </body>
