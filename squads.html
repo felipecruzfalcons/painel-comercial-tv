@@ -405,11 +405,27 @@ function somaGrupo(squads, nomes, metaKey, fatKey) {
   return { meta, fat, pct: meta > 0 ? fat / meta : 0, grupo };
 }
 
+// Mês abreviado (como vem da planilha, ex: "AGO") -> nome completo, pro rótulo da página mensal.
+const MESES_EXTENSO = { JAN:"JANEIRO", FEV:"FEVEREIRO", MAR:"MARÇO", ABR:"ABRIL", MAI:"MAIO", JUN:"JUNHO", JUL:"JULHO", AGO:"AGOSTO", SET:"SETEMBRO", OUT:"OUTUBRO", NOV:"NOVEMBRO", DEZ:"DEZEMBRO" };
+function formatarLabelMensal(mesLabel) {
+  const m = String(mesLabel || "").trim().match(/([A-Za-zÇç]{3})\D*(\d{4})/);
+  if (!m) return "Mensal " + (mesLabel || "");
+  const abrev = m[1].toUpperCase();
+  const ano = m[2];
+  const extenso = MESES_EXTENSO[abrev] || abrev;
+  return `MENSAL ${extenso}/${ano}`;
+}
+
+// Rótulo do cabeçalho troca conforme a página ativa (semanal x mensal) — preenchido no
+// render() e lido pelo mostrarPagina() a cada troca de página.
+let labelPorPagina = ["Semana comercial", "Mensal"];
+
 function render(dados) {
   ultimoDados = dados;
   const { semanaLabel, mesLabel, squads } = dados;
 
-  document.getElementById("semanaLabel").textContent = limparSemanaLabel(semanaLabel) || "Semana comercial";
+  labelPorPagina = [limparSemanaLabel(semanaLabel) || "Semana comercial", formatarLabelMensal(mesLabel)];
+  document.getElementById("semanaLabel").textContent = labelPorPagina[paginaAtual] || labelPorPagina[0];
   document.getElementById("atualizadoLabel").textContent = "última leitura: " + new Date().toLocaleString("pt-BR");
 
   const closerSem = somaGrupo(squads, CLOSER_SQUADS, "metaSemanal", "faturadoSemanal");
@@ -564,6 +580,8 @@ let timerProximaPagina = null;
 function mostrarPagina(indice) {
   const paginas = document.querySelectorAll("#conteudo .pagina");
   paginas.forEach((p, i) => p.classList.toggle("pagina-ativa", i === indice));
+  const label = document.getElementById("semanaLabel");
+  if (label) label.textContent = labelPorPagina[indice] || labelPorPagina[0];
 }
 function agendarProximaPagina() {
   clearTimeout(timerProximaPagina);
