@@ -70,10 +70,9 @@
   }
   .header { flex: none; display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:18px; flex-wrap:wrap; gap:10px; }
   .header .logo { height: 42px; width:auto; display:block; margin-bottom:6px; }
-  /* Tema claro: logo vira preto e "engorda" (drop-shadows em 4 direções simulam negrito
-     numa imagem, já que peso de fonte não se aplica a PNG) — no escuro fica como é. */
+  /* Tema claro: logo vira preto sólido — no escuro fica como é. */
   :root[data-theme="light"] .header .logo {
-    filter: brightness(0) drop-shadow(0.5px 0 0 #000) drop-shadow(-0.5px 0 0 #000) drop-shadow(0 0.5px 0 #000) drop-shadow(0 -0.5px 0 #000);
+    filter: brightness(0);
   }
   .header .brand-sub { font-size:13px; font-weight:700; letter-spacing:.1em; color:var(--texto-sub); text-transform:uppercase; }
   .header .semana { font-size:26px; font-weight:800; margin-top:2px; }
