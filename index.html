@@ -475,9 +475,13 @@ function subCardHtml(categoria, todosVendedores, ritmoEsperado, variante) {
     .map(nome => encontrarVendedor(nome, todosVendedores))
     .filter(Boolean);
   if (!membros.length) return "";
+  // Se não há ritmo esperado válido (ex: planilha zera essa linha após o último dia
+  // útil da semana), usa 100% da meta como referência — nunca força "no ritmo" pra
+  // todo mundo, senão o status vira sempre verde/destaque independente do resultado real.
+  const ritmoBase = ritmoEsperado > 0 ? ritmoEsperado : 1;
   const ordenados = [...membros].sort((a, b) => b.pct - a.pct);
   const linhas = ordenados.map(v => {
-    const ratio = ritmoEsperado > 0 ? v.pct / ritmoEsperado : 1;
+    const ratio = v.pct / ritmoBase;
     const status = statusFromRatio(ratio);
     const cor = "var(--" + status + ")";
     // Escala absoluta: 100% de largura = 100% da meta batida, não o topo do grupo.
@@ -528,8 +532,9 @@ function desenharGrafico(canvasId, chartRefSetter, chartRefAtual, vendedores, ri
   if (chartRefAtual) chartRefAtual.destroy();
   const ctx = document.getElementById(canvasId).getContext("2d");
   const ordenado = [...vendedores].sort((a, b) => b.pct - a.pct);
+  const ritmoBaseGrafico = ritmoEsperado > 0 ? ritmoEsperado : 1;
   const cores = ordenado.map(v => {
-    const ratio = ritmoEsperado > 0 ? v.pct / ritmoEsperado : 1;
+    const ratio = v.pct / ritmoBaseGrafico;
     return statusCor(statusFromRatio(ratio));
   });
   const maiorValor = Math.max(...ordenado.map(v => v.pct * 100), 10);
@@ -586,7 +591,8 @@ function render(dados) {
   const { semanaLabel, ritmoEsperado, vendedores, totalMeta, totalFat } = dados;
   const { diaAtual, diasCompletos } = calcularDiaComercial();
   const pctAtual = totalMeta > 0 ? totalFat / totalMeta : 0;
-  const ratio = ritmoEsperado > 0 ? pctAtual / ritmoEsperado : 1;
+  const ritmoBaseGeral = ritmoEsperado > 0 ? ritmoEsperado : 1;
+  const ratio = pctAtual / ritmoBaseGeral;
   const status = statusFromRatio(ratio);
 
   document.getElementById("semanaLabel").textContent = limparSemanaLabel(semanaLabel) || "Semana comercial";
@@ -595,8 +601,8 @@ function render(dados) {
 
   const closer = groupStats(vendedores, CLOSER_SQUADS);
   const gc = groupStats(vendedores, GC_SQUADS);
-  const closerStatus = statusFromRatio(ritmoEsperado > 0 ? closer.pct / ritmoEsperado : 1);
-  const gcStatus = statusFromRatio(ritmoEsperado > 0 ? gc.pct / ritmoEsperado : 1);
+  const closerStatus = statusFromRatio(closer.pct / ritmoBaseGeral);
+  const gcStatus = statusFromRatio(gc.pct / ritmoBaseGeral);
 
   const barPct = Math.min(pctAtual * 100, 100);
   const markerPct = Math.min((ritmoEsperado || 0) * 100, 100);
