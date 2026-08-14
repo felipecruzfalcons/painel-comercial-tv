@@ -470,15 +470,16 @@ function encontrarVendedor(nomeBusca, todosVendedores) {
   return achado || null;
 }
 
-function subCardHtml(categoria, todosVendedores, ritmoEsperado, variante) {
+function subCardHtml(categoria, todosVendedores, ritmoBase, variante) {
   const membros = categoria.membros
     .map(nome => encontrarVendedor(nome, todosVendedores))
     .filter(Boolean);
   if (!membros.length) return "";
-  // Se não há ritmo esperado válido (ex: planilha zera essa linha após o último dia
-  // útil da semana), usa 100% da meta como referência — nunca força "no ritmo" pra
-  // todo mundo, senão o status vira sempre verde/destaque independente do resultado real.
-  const ritmoBase = ritmoEsperado > 0 ? ritmoEsperado : 1;
+  // ritmoBase já vem calculado do render(): do dia 1 ao 4 é o ritmo esperado do dia
+  // (ou 1 se a planilha não tiver um valor válido); no dia 5 (semana fechada) vem
+  // fixo em 1, pra comparar direto contra 100% da meta em vez do ritmo — evita o
+  // status virar sempre verde/destaque quando o ritmo esperado não bate mais com
+  // os dados da semana que já fechou.
   const ordenados = [...membros].sort((a, b) => b.pct - a.pct);
   const linhas = ordenados.map(v => {
     const ratio = v.pct / ritmoBase;
@@ -528,13 +529,12 @@ function ladderHtml(meta, fat) {
   }).join("");
 }
 
-function desenharGrafico(canvasId, chartRefSetter, chartRefAtual, vendedores, ritmoEsperado) {
+function desenharGrafico(canvasId, chartRefSetter, chartRefAtual, vendedores, ritmoBase) {
   if (chartRefAtual) chartRefAtual.destroy();
   const ctx = document.getElementById(canvasId).getContext("2d");
   const ordenado = [...vendedores].sort((a, b) => b.pct - a.pct);
-  const ritmoBaseGrafico = ritmoEsperado > 0 ? ritmoEsperado : 1;
   const cores = ordenado.map(v => {
-    const ratio = v.pct / ritmoBaseGrafico;
+    const ratio = v.pct / ritmoBase;
     return statusCor(statusFromRatio(ratio));
   });
   const maiorValor = Math.max(...ordenado.map(v => v.pct * 100), 10);
@@ -591,7 +591,12 @@ function render(dados) {
   const { semanaLabel, ritmoEsperado, vendedores, totalMeta, totalFat } = dados;
   const { diaAtual, diasCompletos } = calcularDiaComercial();
   const pctAtual = totalMeta > 0 ? totalFat / totalMeta : 0;
-  const ritmoBaseGeral = ritmoEsperado > 0 ? ritmoEsperado : 1;
+  // Dia 1 a 4: compara contra o ritmo esperado do dia. Dia 5 (semana fechada): usa
+  // percentual final direto (base 1 = 100% da meta), porque nesse ponto o "ritmo
+  // esperado" da planilha já não corresponde mais aos dados da semana que fechou —
+  // combinado com o Felipe pra parar o card de virar sempre verde no fechamento.
+  const usarPercentualFinal = diaAtual >= 5;
+  const ritmoBaseGeral = usarPercentualFinal ? 1 : (ritmoEsperado > 0 ? ritmoEsperado : 1);
   const ratio = pctAtual / ritmoBaseGeral;
   const status = statusFromRatio(ratio);
 
@@ -666,7 +671,7 @@ function render(dados) {
     <div class="pagina" data-pagina="1">
       <div class="grid">
         <div class="subcards-grid-2col">
-          ${CATEGORIAS_TOPO.map(cat => subCardHtml(cat, vendedores, ritmoEsperado, "grande")).join("")}
+          ${CATEGORIAS_TOPO.map(cat => subCardHtml(cat, vendedores, ritmoBaseGeral, "grande")).join("")}
         </div>
       </div>
     </div>
@@ -674,8 +679,8 @@ function render(dados) {
     <div class="pagina" data-pagina="2">
       <div class="grid">
         <div class="subcards-grid-2col">
-          ${CATEGORIAS_FARMERS.map(cat => subCardHtml(cat, vendedores, ritmoEsperado, "grande")).join("")}
-          ${CATEGORIAS_RESTO.map(cat => subCardHtml(cat, vendedores, ritmoEsperado, "grande")).join("")}
+          ${CATEGORIAS_FARMERS.map(cat => subCardHtml(cat, vendedores, ritmoBaseGeral, "grande")).join("")}
+          ${CATEGORIAS_RESTO.map(cat => subCardHtml(cat, vendedores, ritmoBaseGeral, "grande")).join("")}
         </div>
       </div>
     </div>
@@ -701,8 +706,8 @@ function render(dados) {
     </div>
   `;
 
-  desenharGrafico("chartCloser", (c) => { chartCloser = c; }, chartCloser, closer.todos, ritmoEsperado);
-  desenharGrafico("chartGC", (c) => { chartGC = c; }, chartGC, gc.todos, ritmoEsperado);
+  desenharGrafico("chartCloser", (c) => { chartCloser = c; }, chartCloser, closer.todos, ritmoBaseGeral);
+  desenharGrafico("chartGC", (c) => { chartGC = c; }, chartGC, gc.todos, ritmoBaseGeral);
 
   // Reaplica qual página está visível (o innerHTML acima recria os nós, então perde a classe a cada refresh de dado/tema)
   mostrarPagina(paginaAtual);
