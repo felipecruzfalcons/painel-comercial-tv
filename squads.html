@@ -349,14 +349,24 @@ function eixoMaxNice(maxPct) {
   return Math.ceil(maxPct * 1.1 * 10) / 10;
 }
 
+// Eixo COMPARTILHADO entre os 2 cards da mesma página (Closer e GC) — se cada card
+// calculasse o próprio eixo isoladamente, um squad com % bem menor podia aparecer com
+// barra maior só porque o card dele tinha uma escala menor (bug real, reportado pelo
+// Felipe: Maverick 64% parecia maior que Stark 100% porque cada um tinha seu eixo).
+function eixoMaxCompartilhado(gruposDeSquads, pctKey) {
+  const todos = [].concat(...gruposDeSquads);
+  const maxPct = Math.max(...todos.map(s => s[pctKey]), 0.01);
+  return eixoMaxNice(maxPct);
+}
+
 // "Corrida" entre os 2 squads do mesmo grupo (Closer: Falcons x Stark · GC: Maverick x
 // Nexus) — barra 3D grande, no mesmo espírito do gráfico de referência do Felipe.
-function corridaHtml(titulo, squadsDoGrupo, periodo) {
+// eixoMax é sempre o mesmo pros dois cards da página (ver eixoMaxCompartilhado acima),
+// pra barra maior nunca representar um % menor.
+function corridaHtml(titulo, squadsDoGrupo, periodo, eixoMax) {
   if (!squadsDoGrupo.length) return `<div class="corrida-titulo">${titulo}</div><div class="empty-msg">Sem dados no período.</div>`;
   const pctKey = periodo === "mensal" ? "pctMensal" : "pctSemanal";
   const ordenado = [...squadsDoGrupo].sort((a, b) => b[pctKey] - a[pctKey]);
-  const maxPct = Math.max(...ordenado.map(s => s[pctKey]), 0.01);
-  const eixoMax = eixoMaxNice(maxPct);
   const cores = ["cor-1", "cor-2"];
 
   const linhas = ordenado.map((s, i) => {
@@ -400,9 +410,11 @@ function render(dados) {
 
   const closerSem = somaGrupo(squads, CLOSER_SQUADS, "metaSemanal", "faturadoSemanal");
   const gcSem = somaGrupo(squads, GC_SQUADS, "metaSemanal", "faturadoSemanal");
+  const eixoMaxSem = eixoMaxCompartilhado([closerSem.grupo, gcSem.grupo], "pctSemanal");
 
   const closerMes = somaGrupo(squads, CLOSER_SQUADS, "metaMensal", "faturadoMensal");
   const gcMes = somaGrupo(squads, GC_SQUADS, "metaMensal", "faturadoMensal");
+  const eixoMaxMes = eixoMaxCompartilhado([closerMes.grupo, gcMes.grupo], "pctMensal");
   const totalMetaMes = closerMes.meta + gcMes.meta;
   const totalFatMes = closerMes.fat + gcMes.fat;
   const pctMes = totalMetaMes > 0 ? totalFatMes / totalMetaMes : 0;
@@ -415,11 +427,11 @@ function render(dados) {
     <div class="pagina" data-pagina="0">
       <div class="grid">
         <div class="card rank-card rank-card--destaque">
-          ${corridaHtml("Corrida Semanal Closer", closerSem.grupo, "semanal")}
+          ${corridaHtml("Corrida Semanal Closer", closerSem.grupo, "semanal", eixoMaxSem)}
         </div>
 
         <div class="card rank-card rank-card--destaque">
-          ${corridaHtml("Corrida Semanal GC", gcSem.grupo, "semanal")}
+          ${corridaHtml("Corrida Semanal GC", gcSem.grupo, "semanal", eixoMaxSem)}
         </div>
       </div>
     </div>
@@ -446,11 +458,11 @@ function render(dados) {
         </div>
 
         <div class="card rank-card rank-card--destaque">
-          ${corridaHtml("Corrida Mensal Closer", closerMes.grupo, "mensal")}
+          ${corridaHtml("Corrida Mensal Closer", closerMes.grupo, "mensal", eixoMaxMes)}
         </div>
 
         <div class="card rank-card rank-card--destaque">
-          ${corridaHtml("Corrida Mensal GC", gcMes.grupo, "mensal")}
+          ${corridaHtml("Corrida Mensal GC", gcMes.grupo, "mensal", eixoMaxMes)}
         </div>
       </div>
     </div>
