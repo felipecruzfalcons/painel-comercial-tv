@@ -79,7 +79,7 @@
     <div>
       <img class="logo" src="logo.png" alt="SeuBoné">
       <div class="brand-sub">Painel Comercial · Individual Mensal</div>
-      <div class="semana" id="semanaLabel">Corrida individual — mês atual</div>
+      <div class="semana" id="semanaLabel">Corrida individual</div>
     </div>
     <div class="meta-info">
       <div id="atualizadoLabel">última leitura: —</div>
@@ -211,6 +211,14 @@ function diasNoMesAtual() {
   const hoje = new Date();
   return new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
 }
+
+const MESES_PT = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+function preencherLabelMes() {
+  const hoje = new Date();
+  const label = document.getElementById("semanaLabel");
+  if (label) label.textContent = "Corrida Individual — " + MESES_PT[hoje.getMonth()] + "/" + hoje.getFullYear();
+}
+preencherLabelMes();
 
 // Linha 0 da planilha de histórico é o cabeçalho ["Data","Vendedor","Squad","Resultado"].
 function parseHistorico(payload) {
