@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Painel Individual Mensal — SeuBoné</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
+<style>
+  :root, :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0e1015;
+    --card-bg: #171a21;
+    --card-bg-2: #1d212b;
+    --borda: #2a2f3a;
+    --azul: #4f8cff;
+    --dourado: #ffcf33;
+    --cinza: #9aa1ac;
+    --cinza-bg: #20242e;
+    --verde: #3ddc97;
+    --ambar: #fbbf24;
+    --vermelho: #ff6b6b;
+    --texto: #f3f4f6;
+    --texto-sub: #9aa1ac;
+    --grid-linha: rgba(255,255,255,0.06);
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #dde0e5;
+    --card-bg: #eceef1;
+    --card-bg-2: #e4e7eb;
+    --borda: #e4e6ea;
+    --azul: #1e40af;
+    --dourado: #b8860b;
+    --cinza: #6b7280;
+    --cinza-bg: #d7dbe1;
+    --verde: #16a34a;
+    --ambar: #d97706;
+    --vermelho: #dc2626;
+    --texto: #111827;
+    --texto-sub: #6b7280;
+    --grid-linha: rgba(0,0,0,0.08);
+  }
+  body { transition: background-color .25s ease, color .25s ease; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--texto);
+    padding: 22px 32px 32px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .header { flex: none; display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:16px; flex-wrap:wrap; gap:10px; }
+  .header .logo { height: 42px; width:auto; display:block; margin-bottom:6px; }
+  :root[data-theme="light"] .header .logo { filter: brightness(0); }
+  .header .brand-sub { font-size:13px; font-weight:700; letter-spacing:.1em; color:var(--texto-sub); text-transform:uppercase; }
+  .header .semana { font-size:24px; font-weight:800; margin-top:2px; }
+  .header .meta-info { text-align:right; font-size:14px; color:var(--texto-sub); }
+  .link-outro-painel { display:block; margin-top:4px; font-size:13px; color:var(--texto-sub); text-decoration:none; }
+  .link-outro-painel:hover { color:var(--dourado); }
+  .theme-toggle {
+    margin-top: 8px; border: 1px solid var(--borda); background: var(--card-bg); color: var(--texto);
+    font-size: 13px; font-weight: 700; padding: 7px 14px; border-radius: 999px; cursor: pointer;
+  }
+  .theme-toggle:hover { border-color: var(--dourado); }
+  #conteudo { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; gap:14px; }
+  .card { background:var(--card-bg); border:1px solid var(--borda); border-radius:18px; padding:16px 22px; flex:1 1 50%; min-height:0; display:flex; flex-direction:column; }
+  .card-titulo { font-weight:800; font-style:italic; text-transform:uppercase; font-size:17px; margin-bottom:8px; letter-spacing:.02em; flex:none; }
+  .chart-wrap { position:relative; flex:1 1 auto; min-height:0; }
+  .empty-msg { padding:44px; text-align:center; color:var(--texto-sub); }
+</style>
+</head>
+<body>
+
+  <div class="header">
+    <div>
+      <img class="logo" src="logo.png" alt="SeuBoné">
+      <div class="brand-sub">Painel Comercial · Individual Mensal</div>
+      <div class="semana" id="semanaLabel">Corrida individual — mês atual</div>
+    </div>
+    <div class="meta-info">
+      <div id="atualizadoLabel">última leitura: —</div>
+      <button class="theme-toggle" id="btnTema" onclick="alternarTema()">☀️ Tema claro</button>
+      <a class="link-outro-painel" href="index.html">← Painel de vendedores</a>
+      <a class="link-outro-painel" href="squads.html">← Painel de squads</a>
+    </div>
+  </div>
+
+  <div id="conteudo">
+    <div class="card">
+      <div class="empty-msg">Carregando dados da planilha…</div>
+    </div>
+  </div>
+
+<script>
+// >>> URL do Apps Script (doGet) — mesma URL dos outros 2 painéis <<<
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx_8R_UGyyXDK68tazvTc9wj0-ECxbtCvHHOXArkAtvtTjX5uoe2kVCtnG2uxlkfkMxkA/exec?key=comercialpainel2026";
+
+const REFRESH_MS = 10 * 60 * 1000; // 10 min
+const CLOSER_SQUADS = ["FALCONS", "STARK"];
+const GC_SQUADS = ["MAVERICK", "NEXUS"];
+
+let chartCloser = null;
+let chartGC = null;
+let ultimoDados = null;
+const avatarCache = {}; // nome -> canvas circular (ou null se não achou foto)
+
+function toNum(v) {
+  if (typeof v === "number") return v;
+  const n = parseFloat(String(v || "").replace(",", "."));
+  return isNaN(n) ? 0 : n;
+}
+function getInitials(nome) {
+  return String(nome || "").trim().split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase();
+}
+function slugFoto(nome) {
+  return String(nome || "")
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+const EXT_FOTOS = ["jpg", "jpeg", "png", "webp"];
+
+// Tenta carregar a foto do vendedor (cascata de extensões); se nenhuma existir, devolve null
+// (o ponto do gráfico cai pra um círculo simples com as iniciais, sem quebrar nada).
+function preloadFoto(nome) {
+  return new Promise((resolve) => {
+    const slug = slugFoto(nome);
+    let i = 0;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = () => {
+      i++;
+      if (i < EXT_FOTOS.length) { img.src = "fotos/" + slug + "." + EXT_FOTOS[i]; }
+      else resolve(null);
+    };
+    img.src = "fotos/" + slug + "." + EXT_FOTOS[0];
+  });
+}
+// Recorta a foto num círculo com borda dourada — vira o "ponto atual" do vendedor no gráfico.
+function avatarCircular(img, nome, size) {
+  const canvas = document.createElement("canvas");
+  canvas.width = size; canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(size / 2, size / 2, size / 2 - 2, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.clip();
+  if (img) {
+    ctx.drawImage(img, 0, 0, size, size);
+  } else {
+    ctx.fillStyle = "#20242e";
+    ctx.fillRect(0, 0, size, size);
+    ctx.fillStyle = "#f3f4f6";
+    ctx.font = "bold " + Math.round(size * 0.32) + "px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(getInitials(nome), size / 2, size / 2 + 1);
+  }
+  ctx.restore();
+  ctx.beginPath();
+  ctx.arc(size / 2, size / 2, size / 2 - 2, 0, Math.PI * 2);
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = "#ffcf33";
+  ctx.stroke();
+  return canvas;
+}
+
+function aplicarTema(tema) {
+  document.documentElement.setAttribute("data-theme", tema);
+  const btn = document.getElementById("btnTema");
+  if (btn) btn.textContent = tema === "dark" ? "☀️ Tema claro" : "🌙 Tema escuro";
+  try { localStorage.setItem("painelIndividualMensalTema", tema); } catch (e) {}
+  if (ultimoDados) render(ultimoDados);
+}
+function alternarTema() {
+  const atual = document.documentElement.getAttribute("data-theme") || "dark";
+  aplicarTema(atual === "dark" ? "light" : "dark");
+}
+(function iniciarTema() {
+  let salvo = "dark";
+  try { salvo = localStorage.getItem("painelIndividualMensalTema") || "dark"; } catch (e) {}
+  document.documentElement.setAttribute("data-theme", salvo);
+})();
+(function sincronizarBotaoTema() {
+  const tema = document.documentElement.getAttribute("data-theme") || "dark";
+  const btn = document.getElementById("btnTema");
+  if (btn) btn.textContent = tema === "dark" ? "☀️ Tema claro" : "🌙 Tema escuro";
+})();
+
+function corTexto() { return getComputedStyle(document.documentElement).getPropertyValue("--texto").trim(); }
+function corTextoSub() { return getComputedStyle(document.documentElement).getPropertyValue("--texto-sub").trim(); }
+function corGrid() { return getComputedStyle(document.documentElement).getPropertyValue("--grid-linha").trim(); }
+
+// Extrai o dia (1-31) de uma string de data "yyyy-MM-dd" (ou ISO completo) sem usar o
+// construtor Date — evita o fuso horário deslocar o dia (Sheets grava em UTC).
+function extrairDia(dataStr) {
+  const m = String(dataStr || "").match(/(\d{4})-(\d{2})-(\d{2})/);
+  return m ? parseInt(m[3], 10) : 0;
+}
+
+function diasNoMesAtual() {
+  const hoje = new Date();
+  return new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
+}
+
+// Linha 0 da planilha de histórico é o cabeçalho ["Data","Vendedor","Squad","Resultado"].
+function parseHistorico(payload) {
+  const rows = (payload.rows || []).slice(1).filter(r => r[0] && r[1]);
+  const porVendedor = {};
+  rows.forEach(r => {
+    const dia = extrairDia(r[0]);
+    const nome = String(r[1]).trim();
+    const squad = String(r[2] || "").trim().toUpperCase();
+    const pct = toNum(r[3]);
+    if (!dia || !nome) return;
+    if (!porVendedor[nome]) porVendedor[nome] = { nome, squad, pontos: [] };
+    porVendedor[nome].pontos.push({ dia, pct });
+  });
+  const lista = Object.values(porVendedor);
+  lista.forEach(v => v.pontos.sort((a, b) => a.dia - b.dia));
+  return lista;
+}
+
+async function garantirAvatares(vendedores) {
+  await Promise.all(vendedores.map(async v => {
+    if (!(v.nome in avatarCache)) {
+      const img = await preloadFoto(v.nome);
+      avatarCache[v.nome] = avatarCircular(img, v.nome, 96);
+    }
+  }));
+}
+
+function montarDatasets(vendedores) {
+  return vendedores.map((v, i) => {
+    const hue = (i * 61) % 360; // espaça as cores pra não repetir tons parecidos em sequência
+    const cor = "hsl(" + hue + ", 68%, 56%)";
+    const n = v.pontos.length;
+    const avatar = avatarCache[v.nome];
+    return {
+      label: v.nome,
+      data: v.pontos.map(p => ({ x: p.dia, y: +(p.pct * 100).toFixed(2) })),
+      borderColor: cor,
+      backgroundColor: cor,
+      borderWidth: 2.5,
+      tension: 0,
+      fill: false,
+      pointStyle: v.pontos.map((p, idx) => (idx === n - 1 && avatar) ? avatar : "circle"),
+      pointRadius: v.pontos.map((p, idx) => idx === n - 1 ? 24 : 3),
+      pointHoverRadius: v.pontos.map((p, idx) => idx === n - 1 ? 26 : 5),
+    };
+  });
+}
+
+function desenharCorrida(canvasId, chartRefSetter, chartRefAtual, vendedores, titulo) {
+  const wrap = document.getElementById(canvasId).closest(".chart-wrap");
+  if (!vendedores.length) {
+    wrap.innerHTML = '<div class="empty-msg">Sem dados no período.</div>';
+    return;
+  }
+  if (chartRefAtual) chartRefAtual.destroy();
+  const ctx = document.getElementById(canvasId).getContext("2d");
+  const datasets = montarDatasets(vendedores);
+  const maiorValor = Math.max(...vendedores.flatMap(v => v.pontos.map(p => p.pct * 100)), 10);
+  const chart = new Chart(ctx, {
+    type: "line",
+    data: { datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { top: 30, right: 40, bottom: 6, left: 6 } },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: (items) => items[0]?.dataset.label || "",
+            label: (item) => "Dia " + item.parsed.x + " · " + item.parsed.y.toLocaleString("pt-BR", { minimumFractionDigits: 1 }) + "%"
+          }
+        }
+      },
+      scales: {
+        x: {
+          type: "linear",
+          min: 1,
+          max: diasNoMesAtual(),
+          title: { display: true, text: "Dia do mês", color: corTextoSub(), font: { size: 13, weight: "700" } },
+          ticks: { color: corTextoSub(), stepSize: 5, precision: 0 },
+          grid: { color: corGrid() }
+        },
+        y: {
+          beginAtZero: true,
+          suggestedMax: maiorValor * 1.2,
+          title: { display: true, text: "% da meta mensal", color: corTextoSub(), font: { size: 13, weight: "700" } },
+          ticks: { color: corTextoSub(), callback: (v) => v + "%" },
+          grid: { color: corGrid() }
+        }
+      }
+    }
+  });
+  chartRefSetter(chart);
+}
+
+async function render(dados) {
+  ultimoDados = dados;
+  document.getElementById("atualizadoLabel").textContent = "última leitura: " + new Date().toLocaleString("pt-BR");
+
+  await garantirAvatares(dados);
+
+  const closerVend = dados.filter(v => CLOSER_SQUADS.includes(v.squad));
+  const gcVend = dados.filter(v => GC_SQUADS.includes(v.squad));
+
+  document.getElementById("conteudo").innerHTML = `
+    <div class="card">
+      <div class="card-titulo">Corrida Individual Mensal · Closer (Falcons + Stark)</div>
+      <div class="chart-wrap"><canvas id="chartCloser"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-titulo">Corrida Individual Mensal · Gerentes de Contas (Maverick + Nexus)</div>
+      <div class="chart-wrap"><canvas id="chartGC"></canvas></div>
+    </div>
+  `;
+
+  desenharCorrida("chartCloser", (c) => { chartCloser = c; }, chartCloser, closerVend);
+  desenharCorrida("chartGC", (c) => { chartGC = c; }, chartGC, gcVend);
+}
+
+function jsonpRequest(url) {
+  return new Promise((resolve, reject) => {
+    const callbackName = "painelCallback_" + Date.now() + "_" + Math.floor(Math.random() * 1e6);
+    const script = document.createElement("script");
+    let timeoutId;
+    function cleanup() {
+      clearTimeout(timeoutId);
+      delete window[callbackName];
+      script.remove();
+    }
+    window[callbackName] = function(data) { resolve(data); cleanup(); };
+    script.onerror = function() {
+      reject(new Error("Falha ao carregar o Apps Script (verifique a URL/deploy)"));
+      cleanup();
+    };
+    timeoutId = setTimeout(function() {
+      reject(new Error("Tempo esgotado aguardando resposta do Apps Script"));
+      cleanup();
+    }, 25000);
+    const sep = url.includes("?") ? "&" : "?";
+    script.src = url + sep + "callback=" + callbackName + "&_=" + Date.now();
+    document.body.appendChild(script);
+  });
+}
+
+async function carregarDados() {
+  try {
+    const payload = await jsonpRequest(APPS_SCRIPT_URL + "&painel=individual-mensal");
+    if (payload.error) throw new Error(payload.error);
+    const dados = parseHistorico(payload);
+    await render(dados);
+  } catch (e) {
+    if (!ultimoDados) {
+      document.getElementById("conteudo").innerHTML = `
+        <div class="card">
+          <div class="empty-msg">
+            Erro ao carregar dados: ${e.message || e}<br>
+            Verifique se a aba "Histórico Individual Mensal" já existe e se o gatilho diário
+            já rodou pelo menos uma vez (sem isso, ainda não há nenhum ponto pra desenhar).
+          </div>
+        </div>`;
+    }
+    console.error("Erro ao carregar painel individual mensal:", e);
+    setTimeout(carregarDados, 30000);
+  }
+}
+
+carregarDados();
+setInterval(carregarDados, REFRESH_MS);
+</script>
+
+</body>
+</html>
