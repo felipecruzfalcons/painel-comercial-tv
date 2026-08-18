@@ -324,8 +324,10 @@ function construirCorrida(vendedores) {
   const diasTotais = diasNoMesAtual();
   const ultimoDia = dias[dias.length - 1];
   const datasets = vendedores.map((v, i) => {
-    const hue = (i * 61) % 360;
-    const cor = "hsl(" + hue + ", 68%, 56%)";
+    // Cor por SQUAD, não por pessoa: Falcons/Maverick em dourado, Stark/Nexus em branco —
+    // já que cada vendedor tem sua própria raia (rank) exclusiva, a cor não precisa mais
+    // diferenciar indivíduo por indivíduo, só o squad de cada um.
+    const cor = (v.squad === "FALCONS" || v.squad === "MAVERICK") ? "#ffcf33" : "#ffffff";
     const pontos = dias.map(d => ({ x: +(pctNoDia(v.nome, d) * 100).toFixed(2), y: rankPorDia[d][v.nome], dia: d }));
     const n = pontos.length;
     const pctFinal = pctNoDia(v.nome, ultimoDia);
@@ -434,7 +436,9 @@ function desenharCorrida(canvasId, chartRefSetter, chartRefAtual, vendedores, ei
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { top: 10, right: 90, bottom: 10, left: 6 } },
+      // Top/bottom precisam de folga >= raio do avatar, senão a foto do 1º e do último
+      // colocado (que ficam bem na borda do gráfico) fica cortada pelo limite do canvas.
+      layout: { padding: { top: RAIO_AVATAR_MAX + 6, right: 90, bottom: RAIO_AVATAR_MAX + 6, left: 6 } },
       plugins: {
         legend: { display: false },
         tooltip: {
@@ -508,7 +512,7 @@ async function render(dados) {
 // ===== Paginação por fade: 2 páginas (Closer / Gerentes de Contas) — cada card ocupa a
 // página inteira (mais largura pra caber as fotos sem espremer), alternando sozinho como
 // nos outros painéis. =====
-const DURACAO_PAGINA_MS = 20000;
+const DURACAO_PAGINA_MS = 30000;
 let paginaAtual = 0;
 let direcaoPagina = 1;
 let timerProximaPagina = null;
