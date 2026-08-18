@@ -282,54 +282,94 @@ async function garantirAvatares(vendedores) {
   }));
 }
 
-// Raio "ideal" do avatar quando o vendedor está isolado (ninguém perto dele em % e dia) —
-// e o raio mínimo que ele pode encolher até, quando o % dele está muito colado no de
-// outro vendedor. A posição (dia + %) nunca muda: só o TAMANHO da foto se adapta pra
-// nunca sobrepor a foto vizinha — regra do Felipe: número e altura no gráfico não podem
-// discordar nunca.
+// Raio padrão do avatar — agora é sempre o MESMO para todo mundo (pedido do Felipe).
+// O novo desenho do gráfico (linha = % mensal, coluna = colocação atual) garante que cada
+// vendedor tem uma "raia" (linha de ranking) exclusiva, então duas fotos NUNCA competem
+// pelo mesmo espaço vertical — o raio só encolhe (igual pra todo mundo) se o gráfico tiver
+// tantas raias que o espaço entre elas for menor que o tamanho padrão.
 const RAIO_AVATAR_MAX = 19;
-const RAIO_AVATAR_MIN = 6;
+const RAIO_AVATAR_MIN = 8;
 
-function montarDatasets(vendedores) {
+// Constrói, pra cada vendedor, a trilha de pontos {x: % do dia, y: colocação do dia}.
+// A colocação (ranking) é recalculada TODO dia, comparando só os vendedores desse mesmo
+// grupo (Closer ou GC): quem tem % maior fica com colocação menor (1 = primeiro lugar).
+// Em caso de empate (ex.: todo mundo a 0% no dia 1), desempata por ordem alfabética — é
+// por isso que o dia 1 sai naturalmente em ordem alfabética, sem precisar de caso especial.
+function construirCorrida(vendedores) {
+  const diasSet = new Set();
+  vendedores.forEach(v => v.pontos.forEach(p => diasSet.add(p.dia)));
+  const dias = Array.from(diasSet).sort((a, b) => a - b);
+
+  const pctPorDia = {}; // nome -> { dia: pct }
+  vendedores.forEach(v => {
+    pctPorDia[v.nome] = {};
+    v.pontos.forEach(p => { pctPorDia[v.nome][p.dia] = p.pct; });
+  });
+  function pctNoDia(nome, dia) {
+    if (dia in pctPorDia[nome]) return pctPorDia[nome][dia];
+    let ultimo = 0;
+    for (const d of dias) { if (d <= dia && d in pctPorDia[nome]) ultimo = pctPorDia[nome][d]; }
+    return ultimo;
+  }
+
+  const rankPorDia = {}; // dia -> { nome: colocacao }
+  dias.forEach(dia => {
+    const ordenado = vendedores
+      .map(v => ({ nome: v.nome, pct: pctNoDia(v.nome, dia) }))
+      .sort((a, b) => b.pct - a.pct || a.nome.localeCompare(b.nome));
+    rankPorDia[dia] = {};
+    ordenado.forEach((v, idx) => { rankPorDia[dia][v.nome] = idx + 1; });
+  });
+
   const diasTotais = diasNoMesAtual();
-  return vendedores.map((v, i) => {
-    const hue = (i * 61) % 360; // espaça as cores pra não repetir tons parecidos em sequência
+  const ultimoDia = dias[dias.length - 1];
+  const datasets = vendedores.map((v, i) => {
+    const hue = (i * 61) % 360;
     const cor = "hsl(" + hue + ", 68%, 56%)";
-    const n = v.pontos.length;
-    const avatar = avatarCache[v.nome];
-    const pctAtual = v.pontos[n - 1].pct;
-    const diaAtual = v.pontos[n - 1].dia;
-    const projecao = projetarFechamento(pctAtual, diaAtual, diasTotais);
+    const pontos = dias.map(d => ({ x: +(pctNoDia(v.nome, d) * 100).toFixed(2), y: rankPorDia[d][v.nome], dia: d }));
+    const n = pontos.length;
+    const pctFinal = pctNoDia(v.nome, ultimoDia);
+    const rankFinal = rankPorDia[ultimoDia][v.nome];
+    const projecao = projetarFechamento(pctFinal, ultimoDia, diasTotais);
     return {
       label: v.nome,
-      data: v.pontos.map(p => ({ x: p.dia, y: +(p.pct * 100).toFixed(2) })),
+      data: pontos,
       borderColor: cor,
       backgroundColor: cor,
-      borderWidth: 2.5,
+      borderWidth: 2,
       tension: 0,
       fill: false,
-      // O ponto atual (índice n-1) não é mais desenhado pelo Chart.js — o plugin
-      // avatarDeclutterPlugin desenha a foto dele à parte, deslocada o mínimo
-      // necessário pra não empilhar em cima de outra foto com % parecido.
+      // O ponto atual (o último dia) não é desenhado pelo Chart.js — o plugin
+      // avatarDeclutterPlugin desenha a foto dele à parte, na raia (colocação) dele.
       pointStyle: "circle",
-      pointRadius: v.pontos.map((p, idx) => idx === n - 1 ? 0 : 4),
-      pointHoverRadius: v.pontos.map((p, idx) => idx === n - 1 ? 0 : 6),
-      _avatarImg: avatar,
+      pointRadius: pontos.map((p, idx) => idx === n - 1 ? 0 : 3),
+      pointHoverRadius: pontos.map((p, idx) => idx === n - 1 ? 0 : 6),
+      _avatarImg: avatarCache[v.nome],
       _corPct: corPorProjecao(projecao),
-      _pctTexto: (pctAtual * 100).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%",
+      _pctTexto: (pctFinal * 100).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%",
+      _rankFinal: rankFinal,
+      _nome: v.nome,
     };
   });
+
+  const nomePorRank = {};
+  datasets.forEach(ds => { nomePorRank[ds._rankFinal] = ds._nome; });
+  return { datasets, totalVendedores: vendedores.length, nomePorRank };
 }
 
-// Desenha, por cima do gráfico, a foto do ponto atual de cada vendedor + o % colorido —
-// SEMPRE exatamente no dia e no % reais (sem mover em nenhum eixo, em nenhuma hipótese).
-// Todas as fotos e todos os textos de % saem no MESMO tamanho padrão (o maior, RAIO_AVATAR_MAX),
-// por pedido do Felipe — quando duas fotos tiverem % muito parecido, elas vão se sobrepor
-// visualmente (é o preço de manter tamanho uniforme + posição 100% fiel ao dado ao mesmo tempo).
+// Desenha a foto de cada vendedor na "raia" (colocação) dele — como cada raia é exclusiva
+// (só um vendedor por colocação), NUNCA duas fotos competem pelo mesmo espaço vertical.
+// O raio é sempre o mesmo pra todo mundo (RAIO_AVATAR_MAX), só encolhendo — igual pra todos
+// — se o gráfico tiver raias mais estreitas do que o tamanho padrão.
 const avatarDeclutterPlugin = {
   id: "avatarDeclutter",
   afterDatasetsDraw(chart) {
-    const { ctx } = chart;
+    const { ctx, chartArea } = chart;
+    const totalRaias = chart.data.datasets.length || 1;
+    const alturaRaia = totalRaias > 1 ? (chartArea.bottom - chartArea.top) / (totalRaias - 1) : (chartArea.bottom - chartArea.top);
+    const raio = Math.max(RAIO_AVATAR_MIN, Math.min(RAIO_AVATAR_MAX, alturaRaia / 2 - 3));
+    const fonte = Math.round(Math.max(10, Math.min(14, raio + 2)));
+
     const itens = [];
     chart.data.datasets.forEach((ds, dsIndex) => {
       const meta = chart.getDatasetMeta(dsIndex);
@@ -345,32 +385,31 @@ const avatarDeclutterPlugin = {
       if (it.avatar) {
         ctx.save();
         ctx.beginPath();
-        ctx.arc(it.x, it.y, RAIO_AVATAR_MAX, 0, Math.PI * 2);
+        ctx.arc(it.x, it.y, raio, 0, Math.PI * 2);
         ctx.closePath();
         ctx.clip();
-        ctx.drawImage(it.avatar, it.x - RAIO_AVATAR_MAX, it.y - RAIO_AVATAR_MAX, RAIO_AVATAR_MAX * 2, RAIO_AVATAR_MAX * 2);
+        ctx.drawImage(it.avatar, it.x - raio, it.y - raio, raio * 2, raio * 2);
         ctx.restore();
       }
     });
-    // O texto do % é desenhado numa segunda passada, por cima de TODAS as fotos — assim
-    // ele nunca fica escondido debaixo da foto de outro vendedor que esteja sobreposta.
     itens.forEach(it => {
       ctx.save();
-      ctx.font = "bold 14px sans-serif";
+      ctx.font = "bold " + fonte + "px sans-serif";
       ctx.fillStyle = it.cor;
       ctx.textAlign = "left";
       ctx.textBaseline = "middle";
-      ctx.fillText(it.texto, it.x + RAIO_AVATAR_MAX + 6, it.y);
+      ctx.fillText(it.texto, it.x + raio + 6, it.y);
       ctx.restore();
     });
   }
 };
 Chart.register(avatarDeclutterPlugin);
 
-// Calcula um único eixo Y (máximo + intervalo entre linhas) a partir de TODOS os vendedores
-// dos dois gráficos juntos — garante que Closer e Gerentes de Contas fiquem na mesma escala,
-// senão a régua visual de "barra maior = número maior" quebra entre os dois cards.
-function calcularEixoYCompartilhado(vendedoresGeral) {
+// Calcula um único eixo de % (máximo + intervalo entre linhas) a partir de TODOS os
+// vendedores dos dois gráficos juntos — garante que Closer e Gerentes de Contas fiquem na
+// mesma escala, senão a régua visual de "mais à direita = número maior" quebra entre os
+// dois cards.
+function calcularEixoPctCompartilhado(vendedoresGeral) {
   const maior = Math.max(...vendedoresGeral.flatMap(v => v.pontos.map(p => p.pct * 100)), 10);
   let max = Math.ceil((maior * 1.2) / 10) * 10;
   if (max < 20) max = 20;
@@ -380,7 +419,7 @@ function calcularEixoYCompartilhado(vendedoresGeral) {
   return { max, step };
 }
 
-function desenharCorrida(canvasId, chartRefSetter, chartRefAtual, vendedores, eixoY) {
+function desenharCorrida(canvasId, chartRefSetter, chartRefAtual, vendedores, eixoPct) {
   const wrap = document.getElementById(canvasId).closest(".chart-wrap");
   if (!vendedores.length) {
     wrap.innerHTML = '<div class="empty-msg">Sem dados no período.</div>';
@@ -388,41 +427,44 @@ function desenharCorrida(canvasId, chartRefSetter, chartRefAtual, vendedores, ei
   }
   if (chartRefAtual) chartRefAtual.destroy();
   const ctx = document.getElementById(canvasId).getContext("2d");
-  const datasets = montarDatasets(vendedores);
+  const { datasets, totalVendedores, nomePorRank } = construirCorrida(vendedores);
   const chart = new Chart(ctx, {
     type: "line",
     data: { datasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { top: 30, right: 90, bottom: 10, left: 6 } },
+      layout: { padding: { top: 10, right: 90, bottom: 10, left: 6 } },
       plugins: {
         legend: { display: false },
         tooltip: {
           callbacks: {
             title: (items) => items[0]?.dataset.label || "",
-            label: (item) => "Dia " + item.parsed.x + " · " + item.parsed.y.toLocaleString("pt-BR", { minimumFractionDigits: 1 }) + "%"
+            label: (item) => "Dia " + item.raw.dia + " · " + item.parsed.x.toLocaleString("pt-BR", { minimumFractionDigits: 1 }) + "%"
           }
         }
       },
       scales: {
         x: {
           type: "linear",
-          min: 1,
-          max: diasNoMesAtual(),
-          title: { display: true, text: "Dia do mês", color: corTextoSub(), font: { size: 13, weight: "700" } },
-          // Só o RÓTULO do eixo pula de 5 em 5 dias (menos poluição visual) — os pontos
-          // da trilha continuam existindo em TODOS os dias, e passar o mouse em qualquer
-          // um mostra o dia exato e o % daquele dia (ver tooltip acima).
-          ticks: { color: corTextoSub(), stepSize: 5, precision: 0, autoSkip: false, font: { size: 10 } },
+          min: 0,
+          max: eixoPct.max,
+          title: { display: true, text: "% da meta mensal", color: corTextoSub(), font: { size: 13, weight: "700" } },
+          ticks: { color: corTextoSub(), stepSize: eixoPct.step, callback: (v) => v + "%" },
           grid: { color: corGrid() }
         },
         y: {
-          beginAtZero: true,
-          min: 0,
-          max: eixoY.max,
-          title: { display: true, text: "% da meta mensal", color: corTextoSub(), font: { size: 13, weight: "700" } },
-          ticks: { color: corTextoSub(), stepSize: eixoY.step, callback: (v) => v + "%" },
+          type: "linear",
+          reverse: true,
+          min: 1,
+          max: totalVendedores,
+          title: { display: false },
+          ticks: {
+            color: corTextoSub(),
+            stepSize: 1,
+            font: { size: 10, weight: "600" },
+            callback: (v) => nomePorRank[v] || ""
+          },
           grid: { color: corGrid() }
         }
       }
@@ -455,9 +497,9 @@ async function render(dados) {
     </div>
   `;
 
-  const eixoY = calcularEixoYCompartilhado(dados);
-  desenharCorrida("chartCloser", (c) => { chartCloser = c; }, chartCloser, closerVend, eixoY);
-  desenharCorrida("chartGC", (c) => { chartGC = c; }, chartGC, gcVend, eixoY);
+  const eixoPct = calcularEixoPctCompartilhado(dados);
+  desenharCorrida("chartCloser", (c) => { chartCloser = c; }, chartCloser, closerVend, eixoPct);
+  desenharCorrida("chartGC", (c) => { chartGC = c; }, chartGC, gcVend, eixoPct);
 
   mostrarPagina(paginaAtual);
   agendarProximaPagina();
