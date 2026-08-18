@@ -66,8 +66,8 @@
     font-size: 13px; font-weight: 700; padding: 7px 14px; border-radius: 999px; cursor: pointer;
   }
   .theme-toggle:hover { border-color: var(--dourado); }
-  #conteudo { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; gap:14px; }
-  .card { background:var(--card-bg); border:1px solid var(--borda); border-radius:18px; padding:16px 22px; flex:1 1 50%; min-height:0; display:flex; flex-direction:column; }
+  #conteudo { flex:1 1 auto; min-height:0; display:flex; flex-direction:row; gap:14px; }
+  .card { background:var(--card-bg); border:1px solid var(--borda); border-radius:18px; padding:16px 22px; flex:1 1 50%; min-width:0; min-height:0; display:flex; flex-direction:column; }
   .card-titulo { font-weight:800; font-style:italic; text-transform:uppercase; font-size:17px; margin-bottom:8px; letter-spacing:.02em; flex:none; }
   .chart-wrap { position:relative; flex:1 1 auto; min-height:0; }
   .empty-msg { padding:44px; text-align:center; color:var(--texto-sub); }
@@ -262,8 +262,11 @@ function montarDatasets(vendedores) {
       tension: 0,
       fill: false,
       pointStyle: v.pontos.map((p, idx) => (idx === n - 1 && avatar) ? avatar : "circle"),
-      pointRadius: v.pontos.map((p, idx) => idx === n - 1 ? 24 : 3),
-      pointHoverRadius: v.pontos.map((p, idx) => idx === n - 1 ? 26 : 5),
+      // Ponto atual (foto) bem menor que antes — do jeito grande, quem tem % parecido
+      // ficava uma foto encima da outra. Menor ainda deixa a linha do dia anterior
+      // visível chegando até a foto, em vez de desaparecer atrás dela.
+      pointRadius: v.pontos.map((p, idx) => idx === n - 1 ? 13 : 4),
+      pointHoverRadius: v.pontos.map((p, idx) => idx === n - 1 ? 15 : 6),
     };
   });
 }
@@ -300,7 +303,7 @@ function desenharCorrida(canvasId, chartRefSetter, chartRefAtual, vendedores, ti
           min: 1,
           max: diasNoMesAtual(),
           title: { display: true, text: "Dia do mês", color: corTextoSub(), font: { size: 13, weight: "700" } },
-          ticks: { color: corTextoSub(), stepSize: 5, precision: 0 },
+          ticks: { color: corTextoSub(), stepSize: 1, precision: 0, autoSkip: false, font: { size: 10 } },
           grid: { color: corGrid() }
         },
         y: {
