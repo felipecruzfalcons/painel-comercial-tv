@@ -351,6 +351,7 @@ function construirCorrida(vendedores) {
       _pctTexto: (pctFinal * 100).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%",
       _rankFinal: rankFinal,
       _nome: v.nome,
+      _corBase: cor,
     };
   });
 
@@ -379,13 +380,17 @@ const avatarDeclutterPlugin = {
       const ultimoIdx = ds.data.length - 1;
       const ponto = meta.data[ultimoIdx];
       if (!ponto) return;
-      itens.push({ x: ponto.x, y: ponto.y, avatar: ds._avatarImg, cor: ds._corPct, texto: ds._pctTexto });
+      itens.push({ x: ponto.x, y: ponto.y, avatar: ds._avatarImg, cor: ds._corPct, texto: ds._pctTexto, nome: ds._nome, dimmed: !!ds._dimmed });
     });
+    // Guarda a posição/raio de cada foto pra o clique (aplicarIsolamento) saber em qual
+    // vendedor o usuário tocou — recalculado a cada frame, sempre reflete o desenho atual.
+    chart._avatarHitboxes = itens.map(it => ({ x: it.x, y: it.y, raio, nome: it.nome }));
     if (!itens.length) return;
 
     itens.forEach(it => {
       if (it.avatar) {
         ctx.save();
+        ctx.globalAlpha = it.dimmed ? 0.22 : 1;
         ctx.beginPath();
         ctx.arc(it.x, it.y, raio, 0, Math.PI * 2);
         ctx.closePath();
@@ -396,6 +401,7 @@ const avatarDeclutterPlugin = {
     });
     itens.forEach(it => {
       ctx.save();
+      ctx.globalAlpha = it.dimmed ? 0.35 : 1;
       ctx.font = "bold " + fonte + "px sans-serif";
       ctx.fillStyle = it.cor;
       ctx.textAlign = "left";
@@ -406,6 +412,30 @@ const avatarDeclutterPlugin = {
   }
 };
 Chart.register(avatarDeclutterPlugin);
+
+// Converte "#rrggbb" pra "rgba(...)" com opacidade custom — usado pra "apagar" a linha dos
+// vendedores não selecionados quando alguém clica numa foto pra isolar só a trilha dele.
+function hexParaRgba(hex, alpha) {
+  const h = String(hex).replace("#", "");
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  return "rgba(" + r + ", " + g + ", " + b + ", " + alpha + ")";
+}
+
+// Clique numa foto: isola a trilha daquele vendedor (apaga as outras). Clicar de novo na
+// mesma foto (ou não achar ninguém no clique) volta a mostrar todo mundo.
+function aplicarIsolamento(chart, nome) {
+  const jaEstavaIsolado = chart._nomeIsolado === nome;
+  chart._nomeIsolado = jaEstavaIsolado ? null : nome;
+  chart.data.datasets.forEach(ds => {
+    const destacado = !chart._nomeIsolado || ds._nome === chart._nomeIsolado;
+    ds.borderColor = destacado ? ds._corBase : hexParaRgba(ds._corBase, 0.12);
+    ds.backgroundColor = ds.borderColor;
+    ds._dimmed = !destacado;
+  });
+  chart.update("none");
+}
 
 // Calcula um único eixo de % (máximo + intervalo entre linhas) a partir de TODOS os
 // vendedores dos dois gráficos juntos — garante que Closer e Gerentes de Contas fiquem na
@@ -439,6 +469,18 @@ function desenharCorrida(canvasId, chartRefSetter, chartRefAtual, vendedores, ei
       // Top/bottom precisam de folga >= raio do avatar, senão a foto do 1º e do último
       // colocado (que ficam bem na borda do gráfico) fica cortada pelo limite do canvas.
       layout: { padding: { top: RAIO_AVATAR_MAX + 6, right: 90, bottom: RAIO_AVATAR_MAX + 6, left: 6 } },
+      // Clicar na foto de um vendedor isola a trilha dele (apaga as outras); clicar de
+      // novo (ou clicar fora de qualquer foto) volta a mostrar todo mundo.
+      onClick: (evt, elements, chartInstance) => {
+        const hits = chartInstance._avatarHitboxes || [];
+        const alvo = hits.find(h => Math.hypot(evt.x - h.x, evt.y - h.y) <= h.raio);
+        aplicarIsolamento(chartInstance, alvo ? alvo.nome : null);
+      },
+      onHover: (evt, elements, chartInstance) => {
+        const hits = chartInstance._avatarHitboxes || [];
+        const sobreFoto = hits.some(h => Math.hypot(evt.x - h.x, evt.y - h.y) <= h.raio);
+        if (evt.native && evt.native.target) evt.native.target.style.cursor = sobreFoto ? "pointer" : "default";
+      },
       plugins: {
         legend: { display: false },
         tooltip: {
