@@ -318,17 +318,30 @@ const avatarDeclutterPlugin = {
     if (!itens.length) return;
 
     itens.sort((a, b) => a.yReal - b.yReal);
-    const distMinima = RAIO_AVATAR_ATUAL * 2 + 5;
-    for (let passo = 0; passo < 8; passo++) {
-      for (let i = 1; i < itens.length; i++) {
-        const dist = itens[i].yExibido - itens[i - 1].yExibido;
-        if (dist < distMinima) {
-          const falta = (distMinima - dist) / 2;
-          itens[i - 1].yExibido -= falta;
-          itens[i].yExibido += falta;
-        }
+    const distMinima = RAIO_AVATAR_ATUAL * 2 + 10;
+    const n = itens.length;
+    // Regressão isotônica (Pool Adjacent Violators) sobre z_i = yReal_i − i·distMinima:
+    // acha, de uma vez só (sem "chutar" nº de iterações), a posição final mais próxima
+    // possível da real pra cada foto, respeitando o espaçamento mínimo entre vizinhas —
+    // por isso resolve clusters densos (muitos vendedores com % parecido) sem deixar
+    // ninguém se sobrepondo, e sem empurrar tudo pra baixo à toa.
+    const blocos = [];
+    for (let i = 0; i < n; i++) {
+      let bloco = { soma: itens[i].yReal - i * distMinima, peso: 1, qtd: 1 };
+      while (blocos.length && (blocos[blocos.length - 1].soma / blocos[blocos.length - 1].peso) > (bloco.soma / bloco.peso)) {
+        const anterior = blocos.pop();
+        bloco = { soma: anterior.soma + bloco.soma, peso: anterior.peso + bloco.peso, qtd: anterior.qtd + bloco.qtd };
       }
+      blocos.push(bloco);
     }
+    let idx = 0;
+    blocos.forEach(bloco => {
+      const media = bloco.soma / bloco.peso;
+      for (let k = 0; k < bloco.qtd; k++) {
+        itens[idx].yExibido = media + idx * distMinima;
+        idx++;
+      }
+    });
 
     itens.forEach(it => {
       if (Math.abs(it.yExibido - it.yReal) > 1) {
@@ -392,7 +405,7 @@ function desenharCorrida(canvasId, chartRefSetter, chartRefAtual, vendedores, ei
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { top: 34, right: 90, bottom: 6, left: 6 } },
+      layout: { padding: { top: 50, right: 90, bottom: 24, left: 6 } },
       plugins: {
         legend: { display: false },
         tooltip: {
