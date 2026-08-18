@@ -337,78 +337,52 @@ const avatarDeclutterPlugin = {
     });
     if (!itens.length) return;
 
-    itens.sort((a, b) => a.yReal - b.yReal);
-    const distMinima = RAIO_AVATAR_ATUAL * 2 + 10;
-    const n = itens.length;
-    // Regressão isotônica (Pool Adjacent Violators) sobre z_i = yReal_i − i·distMinima:
-    // acha, de uma vez só (sem "chutar" nº de iterações), a posição final mais próxima
-    // possível da real pra cada foto, respeitando o espaçamento mínimo entre vizinhas —
-    // por isso resolve clusters densos (muitos vendedores com % parecido) sem deixar
-    // ninguém se sobrepondo, e sem empurrar tudo pra baixo à toa.
-    const blocos = [];
-    for (let i = 0; i < n; i++) {
-      let bloco = { soma: itens[i].yReal - i * distMinima, peso: 1, qtd: 1 };
-      while (blocos.length && (blocos[blocos.length - 1].soma / blocos[blocos.length - 1].peso) > (bloco.soma / bloco.peso)) {
-        const anterior = blocos.pop();
-        bloco = { soma: anterior.soma + bloco.soma, peso: anterior.peso + bloco.peso, qtd: anterior.qtd + bloco.qtd };
-      }
-      blocos.push(bloco);
-    }
-    let idx = 0;
-    blocos.forEach(bloco => {
-      const media = bloco.soma / bloco.peso;
-      for (let k = 0; k < bloco.qtd; k++) {
-        itens[idx].yExibido = media + idx * distMinima;
-        idx++;
-      }
-    });
+    // yExibido é SEMPRE igual a yReal — a posição vertical da foto tem que corresponder
+    // exatamente ao eixo, sem exceção (regra do Felipe: número e altura no gráfico não
+    // podem discordar nunca). Quem resolve a sobreposição é só o deslocamento horizontal:
+    // dentro de um cluster de % muito próximos, cada foto seguinte desliza pra direita —
+    // como agora cada gráfico ocupa a página inteira (sem dividir com o outro), tem bem
+    // mais espaço horizontal livre pra isso do que quando os dois ficavam lado a lado.
+    itens.sort((a, b) => a.yReal - b.yReal); // topo pro fundo = maior % primeiro
+    const distMinimaY = RAIO_AVATAR_ATUAL * 2 + 4;
+    const passoX = RAIO_AVATAR_ATUAL * 2 + 6;
+    const margemDireita = RAIO_AVATAR_ATUAL + 70; // reserva espaço pro texto do %
+    const limiteDireita = chart.chartArea.right - margemDireita;
 
-    // A regressão isotônica respeita o espaçamento mínimo, mas não sabe onde termina o
-    // gráfico — com muitos vendedores próximos, o bloco inteiro pode "vazar" pra fora da
-    // área útil (foto sumindo por cima/baixo do canvas, ou aparecendo abaixo da linha de
-    // 0%). Aqui a gente comprime/reposiciona o bloco pra caber sempre dentro da área do
-    // gráfico, mantendo a ordem e o espaçamento relativo entre as fotos.
-    const margemBorda = RAIO_AVATAR_ATUAL + 6;
-    const areaTopo = chart.chartArea.top + margemBorda;
-    const areaBase = chart.chartArea.bottom - margemBorda;
-    const areaAltura = Math.max(areaBase - areaTopo, 1);
-    let minExibido = Math.min(...itens.map(it => it.yExibido));
-    let maxExibido = Math.max(...itens.map(it => it.yExibido));
-    const spanExibido = maxExibido - minExibido;
-    if (spanExibido > areaAltura) {
-      const escala = areaAltura / spanExibido;
-      itens.forEach(it => { it.yExibido = areaTopo + (it.yExibido - minExibido) * escala; });
-      minExibido = areaTopo;
-      maxExibido = areaTopo + areaAltura;
-    }
-    if (minExibido < areaTopo) {
-      const delta = areaTopo - minExibido;
-      itens.forEach(it => { it.yExibido += delta; });
-    } else if (maxExibido > areaBase) {
-      const delta = maxExibido - areaBase;
-      itens.forEach(it => { it.yExibido -= delta; });
+    let clusterInicio = 0;
+    for (let i = 1; i <= itens.length; i++) {
+      const fimDoCluster = i === itens.length || (itens[i].yReal - itens[i - 1].yReal) >= distMinimaY;
+      if (fimDoCluster) {
+        const tamanho = i - clusterInicio;
+        for (let k = 0; k < tamanho; k++) {
+          const it = itens[clusterInicio + k];
+          it.yExibido = it.yReal;
+          it.xExibido = Math.min(it.x + 20 + k * passoX, limiteDireita);
+        }
+        clusterInicio = i;
+      }
     }
 
     itens.forEach(it => {
-      if (Math.abs(it.yExibido - it.yReal) > 1) {
+      if (it.xExibido - it.x > 22) {
         ctx.save();
         ctx.strokeStyle = it.cor;
-        ctx.globalAlpha = 0.6;
+        ctx.globalAlpha = 0.5;
         ctx.lineWidth = 1.5;
         ctx.setLineDash([2, 2]);
         ctx.beginPath();
         ctx.moveTo(it.x, it.yReal);
-        ctx.lineTo(it.x + 20, it.yExibido);
+        ctx.lineTo(it.xExibido, it.yExibido);
         ctx.stroke();
         ctx.restore();
       }
       if (it.avatar) {
         ctx.save();
         ctx.beginPath();
-        ctx.arc(it.x + 20, it.yExibido, RAIO_AVATAR_ATUAL, 0, Math.PI * 2);
+        ctx.arc(it.xExibido, it.yExibido, RAIO_AVATAR_ATUAL, 0, Math.PI * 2);
         ctx.closePath();
         ctx.clip();
-        ctx.drawImage(it.avatar, it.x + 20 - RAIO_AVATAR_ATUAL, it.yExibido - RAIO_AVATAR_ATUAL, RAIO_AVATAR_ATUAL * 2, RAIO_AVATAR_ATUAL * 2);
+        ctx.drawImage(it.avatar, it.xExibido - RAIO_AVATAR_ATUAL, it.yExibido - RAIO_AVATAR_ATUAL, RAIO_AVATAR_ATUAL * 2, RAIO_AVATAR_ATUAL * 2);
         ctx.restore();
       }
       ctx.save();
@@ -416,7 +390,7 @@ const avatarDeclutterPlugin = {
       ctx.fillStyle = it.cor;
       ctx.textAlign = "left";
       ctx.textBaseline = "middle";
-      ctx.fillText(it.texto, it.x + 20 + RAIO_AVATAR_ATUAL + 6, it.yExibido);
+      ctx.fillText(it.texto, it.xExibido + RAIO_AVATAR_ATUAL + 6, it.yExibido);
       ctx.restore();
     });
   }
@@ -451,7 +425,7 @@ function desenharCorrida(canvasId, chartRefSetter, chartRefAtual, vendedores, ei
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { top: 50, right: 90, bottom: 24, left: 6 } },
+      layout: { padding: { top: 50, right: 170, bottom: 24, left: 6 } },
       plugins: {
         legend: { display: false },
         tooltip: {
