@@ -343,6 +343,32 @@ const avatarDeclutterPlugin = {
       }
     });
 
+    // A regressão isotônica respeita o espaçamento mínimo, mas não sabe onde termina o
+    // gráfico — com muitos vendedores próximos, o bloco inteiro pode "vazar" pra fora da
+    // área útil (photo sumindo por cima/baixo do canvas, ou aparecendo abaixo da linha de
+    // 0%). Aqui a gente comprime/reposiciona o bloco pra caber sempre dentro da área do
+    // gráfico, mantendo a ordem e o espaçamento relativo entre as fotos.
+    const margemBorda = RAIO_AVATAR_ATUAL + 6;
+    const areaTopo = chart.chartArea.top + margemBorda;
+    const areaBase = chart.chartArea.bottom - margemBorda;
+    const areaAltura = Math.max(areaBase - areaTopo, 1);
+    let minExibido = Math.min(...itens.map(it => it.yExibido));
+    let maxExibido = Math.max(...itens.map(it => it.yExibido));
+    const spanExibido = maxExibido - minExibido;
+    if (spanExibido > areaAltura) {
+      const escala = areaAltura / spanExibido;
+      itens.forEach(it => { it.yExibido = areaTopo + (it.yExibido - minExibido) * escala; });
+      minExibido = areaTopo;
+      maxExibido = areaTopo + areaAltura;
+    }
+    if (minExibido < areaTopo) {
+      const delta = areaTopo - minExibido;
+      itens.forEach(it => { it.yExibido += delta; });
+    } else if (maxExibido > areaBase) {
+      const delta = maxExibido - areaBase;
+      itens.forEach(it => { it.yExibido -= delta; });
+    }
+
     itens.forEach(it => {
       if (Math.abs(it.yExibido - it.yReal) > 1) {
         ctx.save();
