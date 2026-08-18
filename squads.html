@@ -91,6 +91,7 @@
   .hero-top { display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:18px; }
   .hero-num { font-size:76px; font-weight:800; line-height:1; }
   .hero-sub { font-size:18px; color:var(--texto-sub); margin-top:8px; }
+  .hero-sub--destaque { font-size:26px; font-weight:800; color:var(--texto); margin-top:10px; }
   .bar-wrap { position:relative; margin-top:22px; height:26px; background:var(--cinza-bg); border:1px solid var(--borda); border-radius:999px; overflow:visible; }
   .bar-fill { position:absolute; left:0; top:0; height:100%; border-radius:999px; transition:width .6s ease; }
   .bar-marker { position:absolute; top:-7px; bottom:-7px; width:3px; background:var(--dourado); }
@@ -193,7 +194,6 @@
   <div class="header">
     <div>
       <img class="logo" src="logo.png" alt="SeuBoné">
-      <div class="brand-sub">Painel Comercial · Squads</div>
       <div class="semana" id="semanaLabel">carregando…</div>
     </div>
     <div class="meta-info">
@@ -461,9 +461,8 @@ function render(dados) {
         <div class="card hero">
           <div class="hero-top">
             <div>
-              <div class="card-label">Resultado mensal por squad · time comercial (closer + gc) · ${mesLabel || 'mês'}</div>
               <div class="hero-num" style="color: var(--${statusMes})">${fmtPct(pctMes)}</div>
-              <div class="hero-sub">${fmtBRL(totalFatMes)} faturado de ${fmtBRL(totalMetaMes)} de meta mensal</div>
+              <div class="hero-sub hero-sub--destaque">${fmtBRL(totalFatMes)} faturado de ${fmtBRL(totalMetaMes)} de meta mensal</div>
             </div>
           </div>
           <div class="bar-wrap">
