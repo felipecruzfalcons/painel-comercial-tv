@@ -282,9 +282,13 @@ async function garantirAvatares(vendedores) {
   }));
 }
 
-// Raio final do avatar desenhado pelo plugin de "descolisão" (avatarDeclutterPlugin) —
-// os dois precisam bater pro espaçamento mínimo entre fotos ficar certo.
-const RAIO_AVATAR_ATUAL = 19;
+// Raio "ideal" do avatar quando o vendedor está isolado (ninguém perto dele em % e dia) —
+// e o raio mínimo que ele pode encolher até, quando o % dele está muito colado no de
+// outro vendedor. A posição (dia + %) nunca muda: só o TAMANHO da foto se adapta pra
+// nunca sobrepor a foto vizinha — regra do Felipe: número e altura no gráfico não podem
+// discordar nunca.
+const RAIO_AVATAR_MAX = 19;
+const RAIO_AVATAR_MIN = 6;
 
 function montarDatasets(vendedores) {
   const diasTotais = diasNoMesAtual();
@@ -317,11 +321,12 @@ function montarDatasets(vendedores) {
   });
 }
 
-// Desenha, por cima do gráfico, a foto do ponto atual de cada vendedor + o % colorido.
-// O eixo vertical nunca é alterado (a foto sempre fica na altura real do % dela). Quando
-// duas ou mais fotos têm % muito parecido e colidiriam, elas se espalham HORIZONTALMENTE
-// (uma ao lado da outra, com uma linha pontilhada ligando de volta ao ponto real), então
-// quem tem % maior continua visivelmente mais alto, só que sem ficar em cima da outra.
+// Desenha, por cima do gráfico, a foto do ponto atual de cada vendedor + o % colorido —
+// SEMPRE exatamente no dia e no % reais (sem mover em nenhum eixo, em nenhuma hipótese).
+// Quando duas fotos ficam muito próximas, quem resolve não é a posição — é o TAMANHO:
+// cada foto encolhe o mínimo necessário pra não tocar a vizinha mais próxima (com um raio
+// mínimo de segurança). Se dois vendedores estiverem com % literalmente idêntico, as fotos
+// vão se tocar mesmo assim — é o limite físico de manter a posição 100% fiel ao dado.
 const avatarDeclutterPlugin = {
   id: "avatarDeclutter",
   afterDatasetsDraw(chart) {
@@ -333,64 +338,41 @@ const avatarDeclutterPlugin = {
       const ultimoIdx = ds.data.length - 1;
       const ponto = meta.data[ultimoIdx];
       if (!ponto) return;
-      itens.push({ x: ponto.x, yReal: ponto.y, yExibido: ponto.y, avatar: ds._avatarImg, cor: ds._corPct, texto: ds._pctTexto });
+      itens.push({ x: ponto.x, y: ponto.y, avatar: ds._avatarImg, cor: ds._corPct, texto: ds._pctTexto });
     });
     if (!itens.length) return;
 
-    // yExibido é SEMPRE igual a yReal — a posição vertical da foto tem que corresponder
-    // exatamente ao eixo, sem exceção (regra do Felipe: número e altura no gráfico não
-    // podem discordar nunca). Quem resolve a sobreposição é só o deslocamento horizontal:
-    // dentro de um cluster de % muito próximos, cada foto seguinte desliza pra direita —
-    // como agora cada gráfico ocupa a página inteira (sem dividir com o outro), tem bem
-    // mais espaço horizontal livre pra isso do que quando os dois ficavam lado a lado.
-    itens.sort((a, b) => a.yReal - b.yReal); // topo pro fundo = maior % primeiro
-    const distMinimaY = RAIO_AVATAR_ATUAL * 2 + 4;
-    const passoX = RAIO_AVATAR_ATUAL * 2 + 6;
-    const margemDireita = RAIO_AVATAR_ATUAL + 70; // reserva espaço pro texto do %
-    const limiteDireita = chart.chartArea.right - margemDireita;
-
-    let clusterInicio = 0;
-    for (let i = 1; i <= itens.length; i++) {
-      const fimDoCluster = i === itens.length || (itens[i].yReal - itens[i - 1].yReal) >= distMinimaY;
-      if (fimDoCluster) {
-        const tamanho = i - clusterInicio;
-        for (let k = 0; k < tamanho; k++) {
-          const it = itens[clusterInicio + k];
-          it.yExibido = it.yReal;
-          it.xExibido = Math.min(it.x + 20 + k * passoX, limiteDireita);
-        }
-        clusterInicio = i;
-      }
-    }
+    // Pra cada foto, o raio máximo que ela pode ter sem tocar a foto mais próxima (em
+    // qualquer direção — dia ou %) é metade da distância real até essa vizinha, com uma
+    // pequena margem de segurança de 2px.
+    itens.forEach((it, i) => {
+      let menorDist = Infinity;
+      itens.forEach((outro, j) => {
+        if (i === j) return;
+        const d = Math.hypot(it.x - outro.x, it.y - outro.y);
+        if (d < menorDist) menorDist = d;
+      });
+      const raioSeguro = isFinite(menorDist) ? (menorDist / 2 - 2) : RAIO_AVATAR_MAX;
+      it.raio = Math.max(RAIO_AVATAR_MIN, Math.min(RAIO_AVATAR_MAX, raioSeguro));
+      it.fonte = Math.round(Math.max(9, Math.min(14, it.raio + 3)));
+    });
 
     itens.forEach(it => {
-      if (it.xExibido - it.x > 22) {
-        ctx.save();
-        ctx.strokeStyle = it.cor;
-        ctx.globalAlpha = 0.5;
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([2, 2]);
-        ctx.beginPath();
-        ctx.moveTo(it.x, it.yReal);
-        ctx.lineTo(it.xExibido, it.yExibido);
-        ctx.stroke();
-        ctx.restore();
-      }
       if (it.avatar) {
         ctx.save();
         ctx.beginPath();
-        ctx.arc(it.xExibido, it.yExibido, RAIO_AVATAR_ATUAL, 0, Math.PI * 2);
+        ctx.arc(it.x, it.y, it.raio, 0, Math.PI * 2);
         ctx.closePath();
         ctx.clip();
-        ctx.drawImage(it.avatar, it.xExibido - RAIO_AVATAR_ATUAL, it.yExibido - RAIO_AVATAR_ATUAL, RAIO_AVATAR_ATUAL * 2, RAIO_AVATAR_ATUAL * 2);
+        ctx.drawImage(it.avatar, it.x - it.raio, it.y - it.raio, it.raio * 2, it.raio * 2);
         ctx.restore();
       }
       ctx.save();
-      ctx.font = "bold 14px sans-serif";
+      ctx.font = "bold " + it.fonte + "px sans-serif";
       ctx.fillStyle = it.cor;
       ctx.textAlign = "left";
       ctx.textBaseline = "middle";
-      ctx.fillText(it.texto, it.xExibido + RAIO_AVATAR_ATUAL + 6, it.yExibido);
+      ctx.fillText(it.texto, it.x + it.raio + 6, it.y);
       ctx.restore();
     });
   }
@@ -425,7 +407,7 @@ function desenharCorrida(canvasId, chartRefSetter, chartRefAtual, vendedores, ei
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { top: 50, right: 170, bottom: 24, left: 6 } },
+      layout: { padding: { top: 30, right: 90, bottom: 10, left: 6 } },
       plugins: {
         legend: { display: false },
         tooltip: {
