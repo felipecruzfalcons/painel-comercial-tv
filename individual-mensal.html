@@ -423,7 +423,10 @@ function desenharCorrida(canvasId, chartRefSetter, chartRefAtual, vendedores, ei
           min: 1,
           max: diasNoMesAtual(),
           title: { display: true, text: "Dia do mês", color: corTextoSub(), font: { size: 13, weight: "700" } },
-          ticks: { color: corTextoSub(), stepSize: 1, precision: 0, autoSkip: false, font: { size: 10 } },
+          // Só o RÓTULO do eixo pula de 5 em 5 dias (menos poluição visual) — os pontos
+          // da trilha continuam existindo em TODOS os dias, e passar o mouse em qualquer
+          // um mostra o dia exato e o % daquele dia (ver tooltip acima).
+          ticks: { color: corTextoSub(), stepSize: 5, precision: 0, autoSkip: false, font: { size: 10 } },
           grid: { color: corGrid() }
         },
         y: {
