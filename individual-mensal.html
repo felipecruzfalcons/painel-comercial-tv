@@ -220,6 +220,9 @@ function preencherLabelMes() {
 }
 preencherLabelMes();
 
+// Vendedores fora do painel (mesma exclusão do painel 1).
+const EXCLUDE_VENDEDORES = ["HADYJA SARAIVA", "P MARANHAO", "P MARANHÃO"];
+
 // Linha 0 da planilha de histórico é o cabeçalho ["Data","Vendedor","Squad","Resultado"].
 function parseHistorico(payload) {
   const rows = (payload.rows || []).slice(1).filter(r => r[0] && r[1]);
@@ -230,12 +233,21 @@ function parseHistorico(payload) {
     const squad = String(r[2] || "").trim().toUpperCase();
     const pct = toNum(r[3]);
     if (!dia || !nome) return;
+    if (EXCLUDE_VENDEDORES.includes(nome.toUpperCase())) return;
     if (!porVendedor[nome]) porVendedor[nome] = { nome, squad, pontos: [] };
     porVendedor[nome].pontos.push({ dia, pct });
   });
   const lista = Object.values(porVendedor);
   lista.forEach(v => v.pontos.sort((a, b) => a.dia - b.dia));
   return lista;
+}
+
+// Cor do % pelo resultado do próprio vendedor — nada de ritmo esperado aqui, é sempre
+// direto contra a meta mensal: bateu (100%+) = verde, entre 70% e 99,99% = âmbar, abaixo = vermelho.
+function corPorPct(pct) {
+  if (pct >= 1) return "#3ddc97";
+  if (pct >= 0.7) return "#fbbf24";
+  return "#ff6b6b";
 }
 
 async function garantirAvatares(vendedores) {
@@ -247,12 +259,17 @@ async function garantirAvatares(vendedores) {
   }));
 }
 
+// Raio final do avatar desenhado pelo plugin de "descolisão" (avatarDeclutterPlugin) —
+// os dois precisam bater pro espaçamento mínimo entre fotos ficar certo.
+const RAIO_AVATAR_ATUAL = 11;
+
 function montarDatasets(vendedores) {
   return vendedores.map((v, i) => {
     const hue = (i * 61) % 360; // espaça as cores pra não repetir tons parecidos em sequência
     const cor = "hsl(" + hue + ", 68%, 56%)";
     const n = v.pontos.length;
     const avatar = avatarCache[v.nome];
+    const pctAtual = v.pontos[n - 1].pct;
     return {
       label: v.nome,
       data: v.pontos.map(p => ({ x: p.dia, y: +(p.pct * 100).toFixed(2) })),
@@ -261,15 +278,83 @@ function montarDatasets(vendedores) {
       borderWidth: 2.5,
       tension: 0,
       fill: false,
-      pointStyle: v.pontos.map((p, idx) => (idx === n - 1 && avatar) ? avatar : "circle"),
-      // Ponto atual (foto) bem menor que antes — do jeito grande, quem tem % parecido
-      // ficava uma foto encima da outra. Menor ainda deixa a linha do dia anterior
-      // visível chegando até a foto, em vez de desaparecer atrás dela.
-      pointRadius: v.pontos.map((p, idx) => idx === n - 1 ? 13 : 4),
-      pointHoverRadius: v.pontos.map((p, idx) => idx === n - 1 ? 15 : 6),
+      // O ponto atual (índice n-1) não é mais desenhado pelo Chart.js — o plugin
+      // avatarDeclutterPlugin desenha a foto dele à parte, deslocada o mínimo
+      // necessário pra não empilhar em cima de outra foto com % parecido.
+      pointStyle: "circle",
+      pointRadius: v.pontos.map((p, idx) => idx === n - 1 ? 0 : 4),
+      pointHoverRadius: v.pontos.map((p, idx) => idx === n - 1 ? 0 : 6),
+      _avatarImg: avatar,
+      _corPct: corPorPct(pctAtual),
+      _pctTexto: (pctAtual * 100).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%",
     };
   });
 }
+
+// Desenha, por cima do gráfico, a foto do ponto atual de cada vendedor + o % colorido.
+// Afasta verticalmente (sem mudar o dado real) quem estiver muito próximo de outra foto,
+// e traça uma linha fina da posição real até a posição exibida quando há esse deslocamento.
+const avatarDeclutterPlugin = {
+  id: "avatarDeclutter",
+  afterDatasetsDraw(chart) {
+    const { ctx } = chart;
+    const itens = [];
+    chart.data.datasets.forEach((ds, dsIndex) => {
+      const meta = chart.getDatasetMeta(dsIndex);
+      if (meta.hidden || !ds.data.length) return;
+      const ultimoIdx = ds.data.length - 1;
+      const ponto = meta.data[ultimoIdx];
+      if (!ponto) return;
+      itens.push({ x: ponto.x, yReal: ponto.y, yExibido: ponto.y, avatar: ds._avatarImg, cor: ds._corPct, texto: ds._pctTexto });
+    });
+    if (!itens.length) return;
+
+    itens.sort((a, b) => a.yReal - b.yReal);
+    const distMinima = RAIO_AVATAR_ATUAL * 2 + 5;
+    for (let passo = 0; passo < 8; passo++) {
+      for (let i = 1; i < itens.length; i++) {
+        const dist = itens[i].yExibido - itens[i - 1].yExibido;
+        if (dist < distMinima) {
+          const falta = (distMinima - dist) / 2;
+          itens[i - 1].yExibido -= falta;
+          itens[i].yExibido += falta;
+        }
+      }
+    }
+
+    itens.forEach(it => {
+      if (Math.abs(it.yExibido - it.yReal) > 1) {
+        ctx.save();
+        ctx.strokeStyle = it.cor;
+        ctx.globalAlpha = 0.6;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([2, 2]);
+        ctx.beginPath();
+        ctx.moveTo(it.x, it.yReal);
+        ctx.lineTo(it.x + 20, it.yExibido);
+        ctx.stroke();
+        ctx.restore();
+      }
+      if (it.avatar) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(it.x + 20, it.yExibido, RAIO_AVATAR_ATUAL, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(it.avatar, it.x + 20 - RAIO_AVATAR_ATUAL, it.yExibido - RAIO_AVATAR_ATUAL, RAIO_AVATAR_ATUAL * 2, RAIO_AVATAR_ATUAL * 2);
+        ctx.restore();
+      }
+      ctx.save();
+      ctx.font = "bold 12px sans-serif";
+      ctx.fillStyle = it.cor;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(it.texto, it.x + 20 + RAIO_AVATAR_ATUAL + 5, it.yExibido);
+      ctx.restore();
+    });
+  }
+};
+Chart.register(avatarDeclutterPlugin);
 
 function desenharCorrida(canvasId, chartRefSetter, chartRefAtual, vendedores, titulo) {
   const wrap = document.getElementById(canvasId).closest(".chart-wrap");
@@ -287,7 +372,7 @@ function desenharCorrida(canvasId, chartRefSetter, chartRefAtual, vendedores, ti
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { top: 30, right: 40, bottom: 6, left: 6 } },
+      layout: { padding: { top: 30, right: 55, bottom: 6, left: 6 } },
       plugins: {
         legend: { display: false },
         tooltip: {
