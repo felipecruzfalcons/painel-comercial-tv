@@ -66,11 +66,22 @@
     font-size: 13px; font-weight: 700; padding: 7px 14px; border-radius: 999px; cursor: pointer;
   }
   .theme-toggle:hover { border-color: var(--dourado); }
-  #conteudo { flex:1 1 auto; min-height:0; display:flex; flex-direction:row; gap:14px; }
-  .card { background:var(--card-bg); border:1px solid var(--borda); border-radius:18px; padding:16px 22px; flex:1 1 50%; min-width:0; min-height:0; display:flex; flex-direction:column; }
+  #conteudo { position:relative; flex:1 1 auto; min-height:0; overflow:hidden; }
+  .pagina {
+    position:absolute; inset:0; overflow:hidden;
+    opacity:0; visibility:hidden;
+    transition: opacity .7s ease;
+    display:flex;
+  }
+  .pagina.pagina-ativa { opacity:1; visibility:visible; }
+  .card { background:var(--card-bg); border:1px solid var(--borda); border-radius:18px; padding:16px 22px; width:100%; min-width:0; min-height:0; display:flex; flex-direction:column; }
   .card-titulo { font-weight:800; font-style:italic; text-transform:uppercase; font-size:17px; margin-bottom:8px; letter-spacing:.02em; flex:none; }
   .chart-wrap { position:relative; flex:1 1 auto; min-height:0; }
   .empty-msg { padding:44px; text-align:center; color:var(--texto-sub); }
+  .pagina-nav { position:fixed; right:10px; bottom:6px; display:flex; gap:4px; z-index:50; opacity:.3; transition:opacity .2s ease; }
+  .pagina-nav:hover { opacity:1; }
+  .pagina-nav-btn { width:18px; height:18px; border-radius:50%; border:1px solid var(--borda); background:var(--card-bg); color:var(--texto-sub); font-size:11px; line-height:1; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0; }
+  .pagina-nav-btn:hover { border-color:var(--dourado); color:var(--dourado); }
 </style>
 </head>
 <body>
@@ -90,9 +101,16 @@
   </div>
 
   <div id="conteudo">
-    <div class="card">
-      <div class="empty-msg">Carregando dados da planilha…</div>
+    <div class="pagina pagina-ativa">
+      <div class="card">
+        <div class="empty-msg">Carregando dados da planilha…</div>
+      </div>
     </div>
+  </div>
+
+  <div class="pagina-nav">
+    <button class="pagina-nav-btn" onclick="irPara(-1)" aria-label="Página anterior" title="Página anterior">‹</button>
+    <button class="pagina-nav-btn" onclick="irPara(1)" aria-label="Próxima página" title="Próxima página">›</button>
   </div>
 
 <script>
@@ -319,52 +337,78 @@ const avatarDeclutterPlugin = {
     });
     if (!itens.length) return;
 
-    // A posição vertical (yExibido) é SEMPRE igual à real (yReal) — o número precisa
-    // corresponder exatamente à régua do eixo, sem exceção. Quem resolve a sobreposição
-    // aqui é o deslocamento HORIZONTAL: dentro de um cluster de % muito próximos, cada
-    // foto subsequente desliza um pouco pra direita (mantendo o y real de cada uma —
-    // então quem tem % um pouco maior continua um pouco mais alto que o vizinho, como
-    // deveria ser, só que agora sem empilhar em cima).
-    itens.sort((a, b) => a.yReal - b.yReal); // topo pro fundo = maior % primeiro
-    const distMinimaY = RAIO_AVATAR_ATUAL * 2 + 4;
-    const passoX = RAIO_AVATAR_ATUAL * 2 + 6;
-    const margemBorda = RAIO_AVATAR_ATUAL + 6;
-    const limiteDireita = chart.chartArea.right - margemBorda;
-
-    let clusterInicio = 0;
-    for (let i = 1; i <= itens.length; i++) {
-      const fimDoCluster = i === itens.length || (itens[i].yReal - itens[i - 1].yReal) >= distMinimaY;
-      if (fimDoCluster) {
-        const tamanho = i - clusterInicio;
-        for (let k = 0; k < tamanho; k++) {
-          const it = itens[clusterInicio + k];
-          it.yExibido = it.yReal;
-          it.xExibido = Math.min(it.x + 20 + k * passoX, limiteDireita);
-        }
-        clusterInicio = i;
+    itens.sort((a, b) => a.yReal - b.yReal);
+    const distMinima = RAIO_AVATAR_ATUAL * 2 + 10;
+    const n = itens.length;
+    // Regressão isotônica (Pool Adjacent Violators) sobre z_i = yReal_i − i·distMinima:
+    // acha, de uma vez só (sem "chutar" nº de iterações), a posição final mais próxima
+    // possível da real pra cada foto, respeitando o espaçamento mínimo entre vizinhas —
+    // por isso resolve clusters densos (muitos vendedores com % parecido) sem deixar
+    // ninguém se sobrepondo, e sem empurrar tudo pra baixo à toa.
+    const blocos = [];
+    for (let i = 0; i < n; i++) {
+      let bloco = { soma: itens[i].yReal - i * distMinima, peso: 1, qtd: 1 };
+      while (blocos.length && (blocos[blocos.length - 1].soma / blocos[blocos.length - 1].peso) > (bloco.soma / bloco.peso)) {
+        const anterior = blocos.pop();
+        bloco = { soma: anterior.soma + bloco.soma, peso: anterior.peso + bloco.peso, qtd: anterior.qtd + bloco.qtd };
       }
+      blocos.push(bloco);
+    }
+    let idx = 0;
+    blocos.forEach(bloco => {
+      const media = bloco.soma / bloco.peso;
+      for (let k = 0; k < bloco.qtd; k++) {
+        itens[idx].yExibido = media + idx * distMinima;
+        idx++;
+      }
+    });
+
+    // A regressão isotônica respeita o espaçamento mínimo, mas não sabe onde termina o
+    // gráfico — com muitos vendedores próximos, o bloco inteiro pode "vazar" pra fora da
+    // área útil (foto sumindo por cima/baixo do canvas, ou aparecendo abaixo da linha de
+    // 0%). Aqui a gente comprime/reposiciona o bloco pra caber sempre dentro da área do
+    // gráfico, mantendo a ordem e o espaçamento relativo entre as fotos.
+    const margemBorda = RAIO_AVATAR_ATUAL + 6;
+    const areaTopo = chart.chartArea.top + margemBorda;
+    const areaBase = chart.chartArea.bottom - margemBorda;
+    const areaAltura = Math.max(areaBase - areaTopo, 1);
+    let minExibido = Math.min(...itens.map(it => it.yExibido));
+    let maxExibido = Math.max(...itens.map(it => it.yExibido));
+    const spanExibido = maxExibido - minExibido;
+    if (spanExibido > areaAltura) {
+      const escala = areaAltura / spanExibido;
+      itens.forEach(it => { it.yExibido = areaTopo + (it.yExibido - minExibido) * escala; });
+      minExibido = areaTopo;
+      maxExibido = areaTopo + areaAltura;
+    }
+    if (minExibido < areaTopo) {
+      const delta = areaTopo - minExibido;
+      itens.forEach(it => { it.yExibido += delta; });
+    } else if (maxExibido > areaBase) {
+      const delta = maxExibido - areaBase;
+      itens.forEach(it => { it.yExibido -= delta; });
     }
 
     itens.forEach(it => {
-      if (it.xExibido - it.x > 22) {
+      if (Math.abs(it.yExibido - it.yReal) > 1) {
         ctx.save();
         ctx.strokeStyle = it.cor;
-        ctx.globalAlpha = 0.5;
+        ctx.globalAlpha = 0.6;
         ctx.lineWidth = 1.5;
         ctx.setLineDash([2, 2]);
         ctx.beginPath();
         ctx.moveTo(it.x, it.yReal);
-        ctx.lineTo(it.xExibido, it.yExibido);
+        ctx.lineTo(it.x + 20, it.yExibido);
         ctx.stroke();
         ctx.restore();
       }
       if (it.avatar) {
         ctx.save();
         ctx.beginPath();
-        ctx.arc(it.xExibido, it.yExibido, RAIO_AVATAR_ATUAL, 0, Math.PI * 2);
+        ctx.arc(it.x + 20, it.yExibido, RAIO_AVATAR_ATUAL, 0, Math.PI * 2);
         ctx.closePath();
         ctx.clip();
-        ctx.drawImage(it.avatar, it.xExibido - RAIO_AVATAR_ATUAL, it.yExibido - RAIO_AVATAR_ATUAL, RAIO_AVATAR_ATUAL * 2, RAIO_AVATAR_ATUAL * 2);
+        ctx.drawImage(it.avatar, it.x + 20 - RAIO_AVATAR_ATUAL, it.yExibido - RAIO_AVATAR_ATUAL, RAIO_AVATAR_ATUAL * 2, RAIO_AVATAR_ATUAL * 2);
         ctx.restore();
       }
       ctx.save();
@@ -372,7 +416,7 @@ const avatarDeclutterPlugin = {
       ctx.fillStyle = it.cor;
       ctx.textAlign = "left";
       ctx.textBaseline = "middle";
-      ctx.fillText(it.texto, it.xExibido + RAIO_AVATAR_ATUAL + 6, it.yExibido);
+      ctx.fillText(it.texto, it.x + 20 + RAIO_AVATAR_ATUAL + 6, it.yExibido);
       ctx.restore();
     });
   }
@@ -407,7 +451,7 @@ function desenharCorrida(canvasId, chartRefSetter, chartRefAtual, vendedores, ei
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { top: 50, right: 130, bottom: 24, left: 6 } },
+      layout: { padding: { top: 50, right: 90, bottom: 24, left: 6 } },
       plugins: {
         legend: { display: false },
         tooltip: {
@@ -450,19 +494,67 @@ async function render(dados) {
   const gcVend = dados.filter(v => GC_SQUADS.includes(v.squad));
 
   document.getElementById("conteudo").innerHTML = `
-    <div class="card">
-      <div class="card-titulo">Corrida Individual Mensal · Closer (Falcons + Stark)</div>
-      <div class="chart-wrap"><canvas id="chartCloser"></canvas></div>
+    <div class="pagina" data-pagina="0">
+      <div class="card">
+        <div class="card-titulo">Corrida Individual Mensal · Closer (Falcons + Stark)</div>
+        <div class="chart-wrap"><canvas id="chartCloser"></canvas></div>
+      </div>
     </div>
-    <div class="card">
-      <div class="card-titulo">Corrida Individual Mensal · Gerentes de Contas (Maverick + Nexus)</div>
-      <div class="chart-wrap"><canvas id="chartGC"></canvas></div>
+    <div class="pagina" data-pagina="1">
+      <div class="card">
+        <div class="card-titulo">Corrida Individual Mensal · Gerentes de Contas (Maverick + Nexus)</div>
+        <div class="chart-wrap"><canvas id="chartGC"></canvas></div>
+      </div>
     </div>
   `;
 
   const eixoY = calcularEixoYCompartilhado(dados);
   desenharCorrida("chartCloser", (c) => { chartCloser = c; }, chartCloser, closerVend, eixoY);
   desenharCorrida("chartGC", (c) => { chartGC = c; }, chartGC, gcVend, eixoY);
+
+  mostrarPagina(paginaAtual);
+  agendarProximaPagina();
+}
+
+// ===== Paginação por fade: 2 páginas (Closer / Gerentes de Contas) — cada card ocupa a
+// página inteira (mais largura pra caber as fotos sem espremer), alternando sozinho como
+// nos outros painéis. =====
+const DURACAO_PAGINA_MS = 20000;
+let paginaAtual = 0;
+let direcaoPagina = 1;
+let timerProximaPagina = null;
+
+function mostrarPagina(indice) {
+  document.querySelectorAll("#conteudo .pagina").forEach((p, i) => p.classList.toggle("pagina-ativa", i === indice));
+}
+function agendarProximaPagina() {
+  clearTimeout(timerProximaPagina);
+  timerProximaPagina = setTimeout(avancarPagina, DURACAO_PAGINA_MS);
+}
+function avancarPagina() {
+  const total = document.querySelectorAll("#conteudo .pagina").length;
+  const ultimoIndice = total - 1;
+  if (ultimoIndice <= 0) { agendarProximaPagina(); return; }
+  if (paginaAtual + direcaoPagina > ultimoIndice || paginaAtual + direcaoPagina < 0) {
+    direcaoPagina *= -1;
+  }
+  paginaAtual += direcaoPagina;
+  mostrarPagina(paginaAtual);
+  agendarProximaPagina();
+}
+function irPara(delta) {
+  const total = document.querySelectorAll("#conteudo .pagina").length;
+  const ultimoIndice = total - 1;
+  if (ultimoIndice <= 0) return;
+  let novoIndice = paginaAtual + delta;
+  if (novoIndice > ultimoIndice) novoIndice = 0;
+  if (novoIndice < 0) novoIndice = ultimoIndice;
+  if (novoIndice === ultimoIndice) direcaoPagina = -1;
+  else if (novoIndice === 0) direcaoPagina = 1;
+  else direcaoPagina = delta >= 0 ? 1 : -1;
+  paginaAtual = novoIndice;
+  mostrarPagina(paginaAtual);
+  agendarProximaPagina();
 }
 
 function jsonpRequest(url) {
