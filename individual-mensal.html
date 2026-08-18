@@ -242,12 +242,17 @@ function parseHistorico(payload) {
   return lista;
 }
 
-// Cor do % pelo resultado do próprio vendedor — nada de ritmo esperado aqui, é sempre
-// direto contra a meta mensal: bateu (100%+) = verde, entre 70% e 99,99% = âmbar, abaixo = vermelho.
-function corPorPct(pct) {
-  if (pct >= 1) return "#3ddc97";
-  if (pct >= 0.7) return "#fbbf24";
+// Cor do % pela PROJEÇÃO de fechamento do mês (não pelo % acumulado até hoje).
+// Ex.: dia 17 de um mês de 31 dias, 77,4% acumulado → ritmo projeta 77,4% * (31/17) = 141% →
+// verde, porque no ritmo atual o vendedor fecha acima da meta.
+function corPorProjecao(projecao) {
+  if (projecao >= 1) return "#3ddc97";
+  if (projecao >= 0.7) return "#fbbf24";
   return "#ff6b6b";
+}
+function projetarFechamento(pctAtual, diaAtual, diasNoMes) {
+  if (!diaAtual) return pctAtual;
+  return pctAtual * (diasNoMes / diaAtual);
 }
 
 async function garantirAvatares(vendedores) {
@@ -261,15 +266,18 @@ async function garantirAvatares(vendedores) {
 
 // Raio final do avatar desenhado pelo plugin de "descolisão" (avatarDeclutterPlugin) —
 // os dois precisam bater pro espaçamento mínimo entre fotos ficar certo.
-const RAIO_AVATAR_ATUAL = 11;
+const RAIO_AVATAR_ATUAL = 19;
 
 function montarDatasets(vendedores) {
+  const diasTotais = diasNoMesAtual();
   return vendedores.map((v, i) => {
     const hue = (i * 61) % 360; // espaça as cores pra não repetir tons parecidos em sequência
     const cor = "hsl(" + hue + ", 68%, 56%)";
     const n = v.pontos.length;
     const avatar = avatarCache[v.nome];
     const pctAtual = v.pontos[n - 1].pct;
+    const diaAtual = v.pontos[n - 1].dia;
+    const projecao = projetarFechamento(pctAtual, diaAtual, diasTotais);
     return {
       label: v.nome,
       data: v.pontos.map(p => ({ x: p.dia, y: +(p.pct * 100).toFixed(2) })),
@@ -285,7 +293,7 @@ function montarDatasets(vendedores) {
       pointRadius: v.pontos.map((p, idx) => idx === n - 1 ? 0 : 4),
       pointHoverRadius: v.pontos.map((p, idx) => idx === n - 1 ? 0 : 6),
       _avatarImg: avatar,
-      _corPct: corPorPct(pctAtual),
+      _corPct: corPorProjecao(projecao),
       _pctTexto: (pctAtual * 100).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%",
     };
   });
@@ -345,18 +353,31 @@ const avatarDeclutterPlugin = {
         ctx.restore();
       }
       ctx.save();
-      ctx.font = "bold 12px sans-serif";
+      ctx.font = "bold 14px sans-serif";
       ctx.fillStyle = it.cor;
       ctx.textAlign = "left";
       ctx.textBaseline = "middle";
-      ctx.fillText(it.texto, it.x + 20 + RAIO_AVATAR_ATUAL + 5, it.yExibido);
+      ctx.fillText(it.texto, it.x + 20 + RAIO_AVATAR_ATUAL + 6, it.yExibido);
       ctx.restore();
     });
   }
 };
 Chart.register(avatarDeclutterPlugin);
 
-function desenharCorrida(canvasId, chartRefSetter, chartRefAtual, vendedores, titulo) {
+// Calcula um único eixo Y (máximo + intervalo entre linhas) a partir de TODOS os vendedores
+// dos dois gráficos juntos — garante que Closer e Gerentes de Contas fiquem na mesma escala,
+// senão a régua visual de "barra maior = número maior" quebra entre os dois cards.
+function calcularEixoYCompartilhado(vendedoresGeral) {
+  const maior = Math.max(...vendedoresGeral.flatMap(v => v.pontos.map(p => p.pct * 100)), 10);
+  let max = Math.ceil((maior * 1.2) / 10) * 10;
+  if (max < 20) max = 20;
+  let step = 10;
+  if (max > 100) step = 20;
+  if (max > 200) step = 50;
+  return { max, step };
+}
+
+function desenharCorrida(canvasId, chartRefSetter, chartRefAtual, vendedores, eixoY) {
   const wrap = document.getElementById(canvasId).closest(".chart-wrap");
   if (!vendedores.length) {
     wrap.innerHTML = '<div class="empty-msg">Sem dados no período.</div>';
@@ -365,14 +386,13 @@ function desenharCorrida(canvasId, chartRefSetter, chartRefAtual, vendedores, ti
   if (chartRefAtual) chartRefAtual.destroy();
   const ctx = document.getElementById(canvasId).getContext("2d");
   const datasets = montarDatasets(vendedores);
-  const maiorValor = Math.max(...vendedores.flatMap(v => v.pontos.map(p => p.pct * 100)), 10);
   const chart = new Chart(ctx, {
     type: "line",
     data: { datasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { top: 30, right: 55, bottom: 6, left: 6 } },
+      layout: { padding: { top: 34, right: 90, bottom: 6, left: 6 } },
       plugins: {
         legend: { display: false },
         tooltip: {
@@ -393,9 +413,10 @@ function desenharCorrida(canvasId, chartRefSetter, chartRefAtual, vendedores, ti
         },
         y: {
           beginAtZero: true,
-          suggestedMax: maiorValor * 1.2,
+          min: 0,
+          max: eixoY.max,
           title: { display: true, text: "% da meta mensal", color: corTextoSub(), font: { size: 13, weight: "700" } },
-          ticks: { color: corTextoSub(), callback: (v) => v + "%" },
+          ticks: { color: corTextoSub(), stepSize: eixoY.step, callback: (v) => v + "%" },
           grid: { color: corGrid() }
         }
       }
@@ -424,8 +445,9 @@ async function render(dados) {
     </div>
   `;
 
-  desenharCorrida("chartCloser", (c) => { chartCloser = c; }, chartCloser, closerVend);
-  desenharCorrida("chartGC", (c) => { chartGC = c; }, chartGC, gcVend);
+  const eixoY = calcularEixoYCompartilhado(dados);
+  desenharCorrida("chartCloser", (c) => { chartCloser = c; }, chartCloser, closerVend, eixoY);
+  desenharCorrida("chartGC", (c) => { chartGC = c; }, chartGC, gcVend, eixoY);
 }
 
 function jsonpRequest(url) {
