@@ -460,13 +460,19 @@ function aplicarIsolamento(chart, nome) {
 // vendedores dos dois gráficos juntos — garante que Closer e Gerentes de Contas fiquem na
 // mesma escala, senão a régua visual de "mais à direita = número maior" quebra entre os
 // dois cards.
+// Regra: enquanto NINGUÉM bateu 100% da meta, o eixo fica fixo em 100% (não encolhe pra
+// 70/80% só porque o líder ainda não chegou lá — a régua da meta batida sempre aparece no
+// lugar certo). No momento em que alguém bate 100%, o eixo passa a se referenciar pelo 1º
+// colocado (o maior % entre todos), com folga até a próxima marca de 10 pra caber o ponto
+// dele por completo.
 function calcularEixoPctCompartilhado(vendedoresGeral) {
-  const maior = Math.max(...vendedoresGeral.flatMap(v => v.pontos.map(p => p.pct * 100)), 10);
-  let max = Math.ceil((maior * 1.2) / 10) * 10;
-  if (max < 20) max = 20;
-  let step = 10;
-  if (max > 100) step = 20;
-  if (max > 200) step = 50;
+  const maior = Math.max(...vendedoresGeral.flatMap(v => v.pontos.map(p => p.pct * 100)), 0);
+  if (maior < 100) {
+    return { max: 100, step: 10 };
+  }
+  let max = Math.ceil(maior / 10) * 10;
+  if (max <= maior) max += 10;
+  let step = max > 200 ? 50 : 20;
   return { max, step };
 }
 
