@@ -341,6 +341,11 @@ function construirCorrida(vendedores) {
       borderWidth: 2,
       tension: 0,
       fill: false,
+      // Sem isso, o Chart.js corta (clip) qualquer ponto/linha bem na borda da área do
+      // gráfico — e como quem é 1º ou último colocado tem os pontos deles exatamente na
+      // borda de cima/baixo, ficavam com a metade cortada. Libera a mesma folga que já
+      // existe no layout.padding, então nada mais fica pela metade.
+      clip: RAIO_AVATAR_MAX + 10,
       // O ponto atual (o último dia) não é desenhado pelo Chart.js — o plugin
       // avatarDeclutterPlugin desenha a foto dele à parte, na raia (colocação) dele.
       pointStyle: "circle",
