@@ -295,6 +295,13 @@ const RAIO_AVATAR_MIN = 8;
 // grupo (Closer ou GC): quem tem % maior fica com colocação menor (1 = primeiro lugar).
 // Em caso de empate (ex.: todo mundo a 0% no dia 1), desempata por ordem alfabética — é
 // por isso que o dia 1 sai naturalmente em ordem alfabética, sem precisar de caso especial.
+// Quinta-feira 23h59 = fechamento semanal oficial (ritual da empresa). Usa o mês/ano
+// atuais pra descobrir em qual dia do mês cada quinta cai.
+function ehFechamentoSemanal(dia) {
+  const hoje = new Date();
+  return new Date(hoje.getFullYear(), hoje.getMonth(), dia).getDay() === 4; // 4 = quinta
+}
+
 function construirCorrida(vendedores) {
   const diasSet = new Set();
   vendedores.forEach(v => v.pontos.forEach(p => diasSet.add(p.dia)));
@@ -312,8 +319,15 @@ function construirCorrida(vendedores) {
     return ultimo;
   }
 
+  // Em vez de 1 ponto por dia (16-17 pontos, ranking balançando toda hora por ruído dos
+  // primeiros dias), a trilha agora só marca os FECHAMENTOS SEMANAIS (quinta 23h59) — o
+  // valor continua sendo o acumulado do mês até aquele dia, só a quantidade de pontos cai
+  // bastante. O dia de hoje sempre entra também, como o ponto "em andamento" da semana atual.
+  const ultimoDiaGeral = dias[dias.length - 1];
+  const diasCorrida = dias.filter(d => ehFechamentoSemanal(d) || d === ultimoDiaGeral);
+
   const rankPorDia = {}; // dia -> { nome: colocacao }
-  dias.forEach(dia => {
+  diasCorrida.forEach(dia => {
     const ordenado = vendedores
       .map(v => ({ nome: v.nome, pct: pctNoDia(v.nome, dia) }))
       .sort((a, b) => b.pct - a.pct || a.nome.localeCompare(b.nome));
@@ -322,13 +336,13 @@ function construirCorrida(vendedores) {
   });
 
   const diasTotais = diasNoMesAtual();
-  const ultimoDia = dias[dias.length - 1];
+  const ultimoDia = ultimoDiaGeral;
   const datasets = vendedores.map((v, i) => {
     // Cor por SQUAD, não por pessoa: Falcons/Maverick em dourado, Stark/Nexus em branco —
     // já que cada vendedor tem sua própria raia (rank) exclusiva, a cor não precisa mais
     // diferenciar indivíduo por indivíduo, só o squad de cada um.
     const cor = (v.squad === "FALCONS" || v.squad === "MAVERICK") ? "#ffcf33" : "#ffffff";
-    const pontos = dias.map(d => ({ x: +(pctNoDia(v.nome, d) * 100).toFixed(2), y: rankPorDia[d][v.nome], dia: d }));
+    const pontos = diasCorrida.map(d => ({ x: +(pctNoDia(v.nome, d) * 100).toFixed(2), y: rankPorDia[d][v.nome], dia: d }));
     const n = pontos.length;
     const pctFinal = pctNoDia(v.nome, ultimoDia);
     const rankFinal = rankPorDia[ultimoDia][v.nome];
