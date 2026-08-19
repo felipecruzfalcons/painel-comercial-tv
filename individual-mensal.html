@@ -7,7 +7,7 @@
 <style>
   :root, :root[data-theme="dark"] {
     color-scheme: dark;
-    --bg: #0e1015;
+    --bg: #030304;
     --card-bg: #171a21;
     --card-bg-2: #1d212b;
     --borda: #2a2f3a;
@@ -167,9 +167,14 @@ function avatarCircular(img, nome, size) {
   const canvas = document.createElement("canvas");
   canvas.width = size; canvas.height = size;
   const ctx = canvas.getContext("2d");
+  // Borda/inset em proporção ao tamanho (não em px fixo) — assim, ao aumentar a resolução
+  // da imagem de origem (pra ficar nítida em TV grande), a espessura da borda dourada
+  // continua com a mesma proporção visual de antes, em vez de ficar fina/sumir.
+  const inset = size * (2 / 96);
+  const espessuraBorda = size * (4 / 96);
   ctx.save();
   ctx.beginPath();
-  ctx.arc(size / 2, size / 2, size / 2 - 2, 0, Math.PI * 2);
+  ctx.arc(size / 2, size / 2, size / 2 - inset, 0, Math.PI * 2);
   ctx.closePath();
   ctx.clip();
   if (img) {
@@ -185,8 +190,8 @@ function avatarCircular(img, nome, size) {
   }
   ctx.restore();
   ctx.beginPath();
-  ctx.arc(size / 2, size / 2, size / 2 - 2, 0, Math.PI * 2);
-  ctx.lineWidth = 4;
+  ctx.arc(size / 2, size / 2, size / 2 - inset, 0, Math.PI * 2);
+  ctx.lineWidth = espessuraBorda;
   ctx.strokeStyle = "#ffcf33";
   ctx.stroke();
   return canvas;
@@ -277,7 +282,9 @@ async function garantirAvatares(vendedores) {
   await Promise.all(vendedores.map(async v => {
     if (!(v.nome in avatarCache)) {
       const img = await preloadFoto(v.nome);
-      avatarCache[v.nome] = avatarCircular(img, v.nome, 96);
+      // Fonte em resolução bem mais alta que o tamanho exibido — evita ficar borrado
+      // quando a TV é grande/4K e a foto acaba desenhada maior que 96px na tela.
+      avatarCache[v.nome] = avatarCircular(img, v.nome, 240);
     }
   }));
 }
@@ -287,8 +294,8 @@ async function garantirAvatares(vendedores) {
 // vendedor tem uma "raia" (linha de ranking) exclusiva, então duas fotos NUNCA competem
 // pelo mesmo espaço vertical — o raio só encolhe (igual pra todo mundo) se o gráfico tiver
 // tantas raias que o espaço entre elas for menor que o tamanho padrão.
-const RAIO_AVATAR_MAX = 19;
-const RAIO_AVATAR_MIN = 8;
+const RAIO_AVATAR_MAX = 23;
+const RAIO_AVATAR_MIN = 9;
 
 // Constrói, pra cada vendedor, a trilha de pontos {x: % do dia, y: colocação do dia}.
 // A colocação (ranking) é recalculada TODO dia, comparando só os vendedores desse mesmo
