@@ -214,6 +214,7 @@
 
   <div class="pagina-nav">
     <button class="pagina-nav-btn" onclick="irPara(-1)" aria-label="Página anterior" title="Página anterior">‹</button>
+    <button class="pagina-nav-btn" id="btnPausar" onclick="alternarPausa()" aria-label="Pausar passagem de página" title="Pausar passagem de página">⏸</button>
     <button class="pagina-nav-btn" onclick="irPara(1)" aria-label="Próxima página" title="Próxima página">›</button>
   </div>
 
@@ -439,9 +440,17 @@ function render(dados) {
   const totalFatMes = closerMes.fat + gcMes.fat;
   const pctMes = totalMetaMes > 0 ? totalFatMes / totalMetaMes : 0;
   // Não existe "ritmo esperado" pro mês (o conceito é só semanal, dia-a-dia) — aqui o
-  // status usa a própria % do mês contra 100% da meta mensal, sem marcador de projeção.
+  // status usa a própria % do mês contra 100% da meta mensal.
   const statusMes = statusFromRatio(pctMes);
   const barPctMes = Math.min(pctMes * 100, 100);
+  // Projeção mensal: no ritmo do dia corrido do mês, quanto deve fechar até o último dia.
+  // Mesma fórmula usada no painel individual mensal (projetarFechamento).
+  const hoje = new Date();
+  const diaDoMes = hoje.getDate();
+  const diasNoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
+  const pctProjetadoMes = diaDoMes > 0 ? pctMes * (diasNoMes / diaDoMes) : pctMes;
+  const statusProjecaoMes = statusFromRatio(pctProjetadoMes);
+  const projMarkerPctMes = Math.min(pctProjetadoMes * 100, 100);
 
   document.getElementById("conteudo").innerHTML = `
     <div class="pagina" data-pagina="0">
@@ -467,6 +476,8 @@ function render(dados) {
           </div>
           <div class="bar-wrap">
             <div class="bar-fill" style="width:${barPctMes}%; background:var(--${statusMes})"></div>
+            <div class="bar-marker" style="left:${projMarkerPctMes}%; background:var(--${statusProjecaoMes})"></div>
+            <div class="bar-marker-label" style="left:${projMarkerPctMes}%; color:var(--${statusProjecaoMes})">Projeção Mensal ${fmtPct(pctProjetadoMes)}</div>
           </div>
           <div class="bar-legend"><span>0%</span><span>100% da meta mensal</span></div>
         </div>
@@ -575,6 +586,7 @@ let autoPaginacaoIniciada = false;
 let paginaAtual = 0;
 let direcaoPagina = 1;
 let timerProximaPagina = null;
+let paginacaoPausada = false;
 
 function mostrarPagina(indice) {
   const paginas = document.querySelectorAll("#conteudo .pagina");
@@ -584,8 +596,23 @@ function mostrarPagina(indice) {
 }
 function agendarProximaPagina() {
   clearTimeout(timerProximaPagina);
+  if (paginacaoPausada) return;
   const duracao = DURACOES_PAGINA_MS[paginaAtual] ?? 20000;
   timerProximaPagina = setTimeout(avancarPagina, duracao);
+}
+function alternarPausa() {
+  paginacaoPausada = !paginacaoPausada;
+  const btn = document.getElementById("btnPausar");
+  if (btn) {
+    btn.textContent = paginacaoPausada ? "▶" : "⏸";
+    btn.title = paginacaoPausada ? "Retomar passagem de página" : "Pausar passagem de página";
+    btn.setAttribute("aria-label", btn.title);
+  }
+  if (paginacaoPausada) {
+    clearTimeout(timerProximaPagina);
+  } else {
+    agendarProximaPagina();
+  }
 }
 function avancarPagina() {
   const totalPaginas = document.querySelectorAll("#conteudo .pagina").length;
