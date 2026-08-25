@@ -441,7 +441,7 @@ function podiumHtml(top3, avatarClass) {
 const CATEGORIAS_TOPO = [
   { nome: "30+", membros: ["PAULO SERGIO", "VICTOR VARELA", "GIOVANI AUGUSTO", "FERNANDA ARAUJO"] },
   { nome: "50+", membros: ["EMILY DANTAS", "CAMILLA MARINHO", "JAILTON", "CAIO TARGINO", "IGOR NEVES", "VICTOR BRITO", "LUCAS SANTOS", "ALEXSANDRA WHENDELL"] },
-  { nome: "Hunter Reativação", membros: ["TAYNARA SOARES", "VICTOR MEDEIROS", "GABRIEL VINICIUS"] },
+  { nome: "Hunter Reativação", membros: ["TAYNARA SOARES", "VICTOR MEDEIROS", "GABRIEL VINICIUS", "JOÃO GABRIEL SOARES"] },
   { nome: "300+", membros: ["SABRINA SILVA", "EMANUEL PEREIRA"] }
 ];
 const CATEGORIAS_FARMERS = [
@@ -731,6 +731,7 @@ function ajustarEscalaPagina(paginaEl) {
   if (!grid) return;
   grid.style.transform = "";
   grid.style.width = "";
+  paginaEl.style.justifyContent = "";
   const alturaDisponivel = paginaEl.clientHeight;
   const alturaConteudo = grid.scrollHeight;
   if (alturaDisponivel > 0 && alturaConteudo > alturaDisponivel) {
@@ -738,6 +739,11 @@ function ajustarEscalaPagina(paginaEl) {
     grid.style.transformOrigin = "top left";
     grid.style.width = (100 / fator) + "%";
     grid.style.transform = `scale(${fator})`;
+    // Sem isso, a centralização vertical do CSS ancora o encolhimento usando a altura
+    // ORIGINAL (antes do scale), empurrando o topo do conteúdo pra fora da tela — corta
+    // o início do texto. Alinhando pelo topo só quando encolhe, o scale(top left) começa
+    // exatamente em y=0, sem cortar nada. Conteúdo que já cabe continua centralizado.
+    paginaEl.style.justifyContent = "flex-start";
   }
 }
 function ajustarEscalaDasPaginas() {
