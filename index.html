@@ -377,14 +377,12 @@ function statusFromRatio(ratio) {
   return "vermelho";
 }
 // Status por consultor individual (subcards de perfil + gráficos de barra "% da meta
-// individual"): verde continua exigindo estar no ritmo esperado da semana (ratio >= 0.95).
-// Combinado com o Felipe: vermelho só quando o resultado absoluto é muito baixo (<20% da
-// meta) — entre 20% e 39,99% é âmbar (atenção), não alerta, mesmo estando abaixo do ritmo.
+// individual"): mecanismo único, tudo em cima da razão contra o ritmo esperado (que por
+// sua vez já usa o valor de ontem até as 10h — ver obterRitmoBase). Sem piso
+// absoluto separado: corrigir o ritmo de comparação (Fix das 10h) já resolve o caso de
+// alguém em 20%-40% aparecer vermelho cedo demais no dia.
 function statusIndividual(pctAbsoluto, ritmoBase) {
-  const ratio = pctAbsoluto / ritmoBase;
-  if (ratio >= 0.95) return "verde";
-  if (pctAbsoluto < 0.20) return "vermelho";
-  return "ambar";
+  return statusFromRatio(pctAbsoluto / ritmoBase);
 }
 function statusTexto(status) {
   if (status === "verde") return "NO RITMO";
@@ -611,11 +609,14 @@ function diasEntre(dataStrA, dataStrB) {
 // ninguém ter tido chance de vender no dia — daí gente que estava em dia (ou até verde)
 // aparece atrasada. Fix: o painel guarda sozinho (localStorage) o último ritmo esperado
 // visto no dia anterior e usa ele até as 10h do dia seguinte, em vez do valor já virado.
-// Não se aplica no dia 1 da semana (sexta) — "ontem" seria o fechamento da semana passada
-// (ritmo perto de 100%), o que puniria errado quem está começando a semana do zero.
+// Vale pra todos os dias 2-5 da semana (seg a qui), inclusive quinta (fechamento): até as
+// 10h de quinta ainda compara contra o ritmo de quarta, só depois das 10h passa a comparar
+// contra 100% da meta (regra de fechamento). Não se aplica no dia 1 (sexta) — "ontem" seria
+// o fechamento da semana passada (ritmo perto de 100%), o que puniria errado quem está
+// começando a semana do zero.
 // Risco aceito: se a TV ficar desligada por mais de 1 dia, não há "ontem" confiável pra
-// usar e o painel cai direto no valor do dia (mesmo comportamento de hoje).
-function obterRitmoComGraca(ritmoEsperadoAtual, diaAtual) {
+// usar e o painel cai direto na regra normal do dia (mesmo comportamento de hoje).
+function obterRitmoBase(ritmoEsperadoAtual, diaAtual) {
   const agora = new Date();
   const hojeStr = agora.toISOString().slice(0, 10);
   let cacheHoje = null, cacheOntem = null;
@@ -633,13 +634,18 @@ function obterRitmoComGraca(ritmoEsperadoAtual, diaAtual) {
       try { localStorage.removeItem("painelRitmoOntem"); } catch (e) { /* ignora */ }
     }
   }
-  try { localStorage.setItem("painelRitmoHoje", JSON.stringify({ data: hojeStr, valor: ritmoEsperadoAtual })); } catch (e) { /* ignora */ }
+  // guarda o valor CRU de hoje (antes de qualquer override de fechamento), pra servir de
+  // referência "de ontem" amanhã — inclusive no dia 5, cujo valor cru vira o "ontem" da
+  // sexta seguinte (que de qualquer forma não usa graça, por ser dia 1).
+  const valorCruHoje = ritmoEsperadoAtual > 0 ? ritmoEsperadoAtual : 1;
+  try { localStorage.setItem("painelRitmoHoje", JSON.stringify({ data: hojeStr, valor: valorCruHoje })); } catch (e) { /* ignora */ }
 
   const dentroDaGraca = agora.getHours() < 10 && diaAtual > 1;
   if (dentroDaGraca && cacheOntem && cacheOntem.valor > 0) {
     return cacheOntem.valor;
   }
-  return ritmoEsperadoAtual;
+  // fora da graça (ou dia 1): regra normal — dia 5 compara contra 100% da meta (fechamento)
+  return diaAtual >= 5 ? 1 : valorCruHoje;
 }
 
 function render(dados) {
@@ -649,13 +655,12 @@ function render(dados) {
   const vendedores = (dados.vendedores || []).filter(v => !EXCLUDE_VENDEDORES.includes(normalizar(v.nome)));
   const { diaAtual, diasCompletos } = calcularDiaComercial();
   const pctAtual = totalMeta > 0 ? totalFat / totalMeta : 0;
-  // Dia 1 a 4: compara contra o ritmo esperado do dia. Dia 5 (semana fechada): usa
-  // percentual final direto (base 1 = 100% da meta), porque nesse ponto o "ritmo
-  // esperado" da planilha já não corresponde mais aos dados da semana que fechou —
-  // combinado com o Felipe pra parar o card de virar sempre verde no fechamento.
-  const usarPercentualFinal = diaAtual >= 5;
-  const ritmoEsperadoComGraca = obterRitmoComGraca(ritmoEsperado > 0 ? ritmoEsperado : 1, diaAtual);
-  const ritmoBaseGeral = usarPercentualFinal ? 1 : ritmoEsperadoComGraca;
+  // Dia 1 a 4: compara contra o ritmo esperado do dia (o de ontem até as 10h — ver
+  // obterRitmoBase). Dia 5 (semana fechada) depois das 10h: usa percentual final direto
+  // (base 1 = 100% da meta), porque nesse ponto o "ritmo esperado" da planilha já não
+  // corresponde mais aos dados da semana que fechou — combinado com o Felipe pra parar
+  // o card de virar sempre verde no fechamento.
+  const ritmoBaseGeral = obterRitmoBase(ritmoEsperado, diaAtual);
   const ratio = pctAtual / ritmoBaseGeral;
   const status = statusFromRatio(ratio);
 
