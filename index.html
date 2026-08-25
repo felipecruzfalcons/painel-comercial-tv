@@ -238,6 +238,7 @@
 
   <div class="pagina-nav">
     <button class="pagina-nav-btn" onclick="irPara(-1)" aria-label="Página anterior" title="Página anterior">‹</button>
+    <button class="pagina-nav-btn" id="btnPausar" onclick="alternarPausa()" aria-label="Pausar passagem de página" title="Pausar passagem de página">⏸</button>
     <button class="pagina-nav-btn" onclick="irPara(1)" aria-label="Próxima página" title="Próxima página">›</button>
   </div>
 
@@ -878,6 +879,7 @@ let autoPaginacaoIniciada = false;
 let paginaAtual = 0;
 let direcaoPagina = 1; // 1 = avançando, -1 = voltando (vai e volta passando por todas, sem pular a do meio)
 let timerProximaPagina = null;
+let paginacaoPausada = false;
 
 function mostrarPagina(indice) {
   const paginas = document.querySelectorAll("#conteudo .pagina");
@@ -886,8 +888,24 @@ function mostrarPagina(indice) {
 
 function agendarProximaPagina() {
   clearTimeout(timerProximaPagina);
+  if (paginacaoPausada) return;
   const duracao = DURACOES_PAGINA_MS[paginaAtual] ?? 20000;
   timerProximaPagina = setTimeout(avancarPagina, duracao);
+}
+
+function alternarPausa() {
+  paginacaoPausada = !paginacaoPausada;
+  const btn = document.getElementById("btnPausar");
+  if (btn) {
+    btn.textContent = paginacaoPausada ? "▶" : "⏸";
+    btn.title = paginacaoPausada ? "Retomar passagem de página" : "Pausar passagem de página";
+    btn.setAttribute("aria-label", btn.title);
+  }
+  if (paginacaoPausada) {
+    clearTimeout(timerProximaPagina);
+  } else {
+    agendarProximaPagina();
+  }
 }
 
 function avancarPagina() {
