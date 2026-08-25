@@ -376,6 +376,16 @@ function statusFromRatio(ratio) {
   if (ratio >= 0.7) return "ambar";
   return "vermelho";
 }
+// Status por consultor individual (subcards de perfil + gráficos de barra "% da meta
+// individual"): verde continua exigindo estar no ritmo esperado da semana (ratio >= 0.95).
+// Combinado com o Felipe: vermelho só quando o resultado absoluto é muito baixo (<20% da
+// meta) — entre 20% e 39,99% é âmbar (atenção), não alerta, mesmo estando abaixo do ritmo.
+function statusIndividual(pctAbsoluto, ritmoBase) {
+  const ratio = pctAbsoluto / ritmoBase;
+  if (ratio >= 0.95) return "verde";
+  if (pctAbsoluto < 0.20) return "vermelho";
+  return "ambar";
+}
 function statusTexto(status) {
   if (status === "verde") return "NO RITMO";
   if (status === "ambar") return "ATENÇÃO";
@@ -486,8 +496,7 @@ function subCardHtml(categoria, todosVendedores, ritmoBase, variante) {
   // os dados da semana que já fechou.
   const ordenados = [...membros].sort((a, b) => b.pct - a.pct);
   const linhas = ordenados.map(v => {
-    const ratio = v.pct / ritmoBase;
-    const status = statusFromRatio(ratio);
+    const status = statusIndividual(v.pct, ritmoBase);
     const cor = "var(--" + status + ")";
     // Escala absoluta: 100% de largura = 100% da meta batida, não o topo do grupo.
     // Evita que o bar do 1º lugar sempre pareça "cheio" mesmo estando abaixo da meta,
@@ -537,10 +546,7 @@ function desenharGrafico(canvasId, chartRefSetter, chartRefAtual, vendedores, ri
   if (chartRefAtual) chartRefAtual.destroy();
   const ctx = document.getElementById(canvasId).getContext("2d");
   const ordenado = [...vendedores].sort((a, b) => b.pct - a.pct);
-  const cores = ordenado.map(v => {
-    const ratio = v.pct / ritmoBase;
-    return statusCor(statusFromRatio(ratio));
-  });
+  const cores = ordenado.map(v => statusCor(statusIndividual(v.pct, ritmoBase)));
   const maiorValor = Math.max(...ordenado.map(v => v.pct * 100), 10);
   const chart = new Chart(ctx, {
     type: "bar",
@@ -592,6 +598,50 @@ function desenharGrafico(canvasId, chartRefSetter, chartRefAtual, vendedores, ri
 // Consultores que saíram/não devem aparecer em nenhum ranking ou gráfico do painel.
 const EXCLUDE_VENDEDORES = ["HADYJA SARAIVA", "P MARANHAO", "P MARANHÃO"];
 
+// Diferença em dias de calendário entre duas datas "AAAA-MM-DD".
+function diasEntre(dataStrA, dataStrB) {
+  const a = new Date(dataStrA + "T00:00:00");
+  const b = new Date(dataStrB + "T00:00:00");
+  return Math.round((b - a) / 86400000);
+}
+
+// Regra combinada com o Felipe: a planilha vira o "% de realização esperado" à meia-noite
+// (data de calendário), mas as vendas do dia ainda não começaram a entrar de fato. Até as
+// 10h da manhã, isso compara o resultado de todo mundo contra uma meta que já subiu sem
+// ninguém ter tido chance de vender no dia — daí gente que estava em dia (ou até verde)
+// aparece atrasada. Fix: o painel guarda sozinho (localStorage) o último ritmo esperado
+// visto no dia anterior e usa ele até as 10h do dia seguinte, em vez do valor já virado.
+// Não se aplica no dia 1 da semana (sexta) — "ontem" seria o fechamento da semana passada
+// (ritmo perto de 100%), o que puniria errado quem está começando a semana do zero.
+// Risco aceito: se a TV ficar desligada por mais de 1 dia, não há "ontem" confiável pra
+// usar e o painel cai direto no valor do dia (mesmo comportamento de hoje).
+function obterRitmoComGraca(ritmoEsperadoAtual, diaAtual) {
+  const agora = new Date();
+  const hojeStr = agora.toISOString().slice(0, 10);
+  let cacheHoje = null, cacheOntem = null;
+  try {
+    cacheHoje = JSON.parse(localStorage.getItem("painelRitmoHoje") || "null");
+    cacheOntem = JSON.parse(localStorage.getItem("painelRitmoOntem") || "null");
+  } catch (e) { /* ambiente sem localStorage, segue sem cache */ }
+
+  if (cacheHoje && cacheHoje.data !== hojeStr) {
+    if (diasEntre(cacheHoje.data, hojeStr) === 1) {
+      cacheOntem = cacheHoje;
+      try { localStorage.setItem("painelRitmoOntem", JSON.stringify(cacheOntem)); } catch (e) { /* ignora */ }
+    } else {
+      cacheOntem = null; // gap de vários dias (TV ficou off) — valor velho demais pra confiar
+      try { localStorage.removeItem("painelRitmoOntem"); } catch (e) { /* ignora */ }
+    }
+  }
+  try { localStorage.setItem("painelRitmoHoje", JSON.stringify({ data: hojeStr, valor: ritmoEsperadoAtual })); } catch (e) { /* ignora */ }
+
+  const dentroDaGraca = agora.getHours() < 10 && diaAtual > 1;
+  if (dentroDaGraca && cacheOntem && cacheOntem.valor > 0) {
+    return cacheOntem.valor;
+  }
+  return ritmoEsperadoAtual;
+}
+
 function render(dados) {
   ultimoDados = dados;
   const diasUteisSemana = 5;
@@ -604,7 +654,8 @@ function render(dados) {
   // esperado" da planilha já não corresponde mais aos dados da semana que fechou —
   // combinado com o Felipe pra parar o card de virar sempre verde no fechamento.
   const usarPercentualFinal = diaAtual >= 5;
-  const ritmoBaseGeral = usarPercentualFinal ? 1 : (ritmoEsperado > 0 ? ritmoEsperado : 1);
+  const ritmoEsperadoComGraca = obterRitmoComGraca(ritmoEsperado > 0 ? ritmoEsperado : 1, diaAtual);
+  const ritmoBaseGeral = usarPercentualFinal ? 1 : ritmoEsperadoComGraca;
   const ratio = pctAtual / ritmoBaseGeral;
   const status = statusFromRatio(ratio);
 
