@@ -589,10 +589,14 @@ function desenharGrafico(canvasId, chartRefSetter, chartRefAtual, vendedores, ri
   chartRefSetter(chart);
 }
 
+// Consultores que saíram/não devem aparecer em nenhum ranking ou gráfico do painel.
+const EXCLUDE_VENDEDORES = ["HADYJA SARAIVA", "P MARANHAO", "P MARANHÃO"];
+
 function render(dados) {
   ultimoDados = dados;
   const diasUteisSemana = 5;
-  const { semanaLabel, ritmoEsperado, vendedores, totalMeta, totalFat } = dados;
+  const { semanaLabel, ritmoEsperado, totalMeta, totalFat } = dados;
+  const vendedores = (dados.vendedores || []).filter(v => !EXCLUDE_VENDEDORES.includes(normalizar(v.nome)));
   const { diaAtual, diasCompletos } = calcularDiaComercial();
   const pctAtual = totalMeta > 0 ? totalFat / totalMeta : 0;
   // Dia 1 a 4: compara contra o ritmo esperado do dia. Dia 5 (semana fechada): usa
