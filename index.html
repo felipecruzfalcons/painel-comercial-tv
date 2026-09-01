@@ -377,13 +377,29 @@ function statusFromRatio(ratio) {
   if (ratio >= 0.7) return "ambar";
   return "vermelho";
 }
-// Status por consultor individual (subcards de perfil + gráficos de barra "% da meta
-// individual"): mecanismo único, tudo em cima da razão contra o ritmo esperado (que por
-// sua vez já usa o valor de ontem até as 10h — ver obterRitmoBase). Sem piso
-// absoluto separado: corrigir o ritmo de comparação (Fix das 10h) já resolve o caso de
-// alguém em 20%-40% aparecer vermelho cedo demais no dia.
-function statusIndividual(pctAbsoluto, ritmoBase) {
+// Fechamento semanal (dia 5 = quinta, semana já bateu o martelo): a comparação deixa de
+// ser contra o ritmo esperado do dia (isso é coisa de meio de semana) e passa a ser
+// direto contra 100% da meta — sem ritmo, sem graça das 10h, sem margem de 95%. Regra
+// combinada com o Felipe: verde só quem bateu a meta (≥100%), âmbar de 70% a 99,99%,
+// vermelho abaixo de 70%. Antes disso, o dia 5 ainda herdava o limiar de 95% (verde
+// "quase lá") e, antes das 10h, chegava a herdar o ritmo de quarta — fazendo gente abaixo
+// de 70% da meta aparecer verde no resultado final. Não existe mais.
+function statusFechamento(pctAbsoluto) {
+  if (pctAbsoluto >= 1) return "verde";
+  if (pctAbsoluto >= 0.7) return "ambar";
+  return "vermelho";
+}
+// Status único usado em todo o painel (hero, Top Closer/GC, subcards, gráficos): do dia 1
+// ao 4 compara contra o ritmo esperado (statusFromRatio, com a graça das 10h já embutida
+// no ritmoBase — ver obterRitmoBase). No dia 5 (fechamento), ignora ritmoBase e usa
+// statusFechamento contra 100% da meta.
+function statusPeriodo(pctAbsoluto, ritmoBase, diaAtual) {
+  if (diaAtual >= 5) return statusFechamento(pctAbsoluto);
   return statusFromRatio(pctAbsoluto / ritmoBase);
+}
+// Mantido como alias por compatibilidade dos subcards/gráficos individuais.
+function statusIndividual(pctAbsoluto, ritmoBase, diaAtual) {
+  return statusPeriodo(pctAbsoluto, ritmoBase, diaAtual);
 }
 function statusTexto(status) {
   if (status === "verde") return "NO RITMO";
@@ -483,19 +499,16 @@ function encontrarVendedor(nomeBusca, todosVendedores) {
   return achado || null;
 }
 
-function subCardHtml(categoria, todosVendedores, ritmoBase, variante) {
+function subCardHtml(categoria, todosVendedores, ritmoBase, variante, diaAtual) {
   const membros = categoria.membros
     .map(nome => encontrarVendedor(nome, todosVendedores))
     .filter(Boolean);
   if (!membros.length) return "";
-  // ritmoBase já vem calculado do render(): do dia 1 ao 4 é o ritmo esperado do dia
-  // (ou 1 se a planilha não tiver um valor válido); no dia 5 (semana fechada) vem
-  // fixo em 1, pra comparar direto contra 100% da meta em vez do ritmo — evita o
-  // status virar sempre verde/destaque quando o ritmo esperado não bate mais com
-  // os dados da semana que já fechou.
+  // No dia 5 (fechamento), statusIndividual ignora ritmoBase e compara direto contra
+  // 100% da meta (ver statusFechamento) — dias 1-4 seguem no ritmo esperado do dia.
   const ordenados = [...membros].sort((a, b) => b.pct - a.pct);
   const linhas = ordenados.map(v => {
-    const status = statusIndividual(v.pct, ritmoBase);
+    const status = statusIndividual(v.pct, ritmoBase, diaAtual);
     const cor = "var(--" + status + ")";
     // Escala absoluta: 100% de largura = 100% da meta batida, não o topo do grupo.
     // Evita que o bar do 1º lugar sempre pareça "cheio" mesmo estando abaixo da meta,
@@ -541,11 +554,11 @@ function ladderHtml(meta, fat) {
   }).join("");
 }
 
-function desenharGrafico(canvasId, chartRefSetter, chartRefAtual, vendedores, ritmoBase) {
+function desenharGrafico(canvasId, chartRefSetter, chartRefAtual, vendedores, ritmoBase, diaAtual) {
   if (chartRefAtual) chartRefAtual.destroy();
   const ctx = document.getElementById(canvasId).getContext("2d");
   const ordenado = [...vendedores].sort((a, b) => b.pct - a.pct);
-  const cores = ordenado.map(v => statusCor(statusIndividual(v.pct, ritmoBase)));
+  const cores = ordenado.map(v => statusCor(statusIndividual(v.pct, ritmoBase, diaAtual)));
   const maiorValor = Math.max(...ordenado.map(v => v.pct * 100), 10);
   const chart = new Chart(ctx, {
     type: "bar",
@@ -662,8 +675,7 @@ function render(dados) {
   // corresponde mais aos dados da semana que fechou — combinado com o Felipe pra parar
   // o card de virar sempre verde no fechamento.
   const ritmoBaseGeral = obterRitmoBase(ritmoEsperado, diaAtual);
-  const ratio = pctAtual / ritmoBaseGeral;
-  const status = statusFromRatio(ratio);
+  const status = statusPeriodo(pctAtual, ritmoBaseGeral, diaAtual);
 
   document.getElementById("semanaLabel").textContent = limparSemanaLabel(semanaLabel) || "Semana comercial";
   document.getElementById("diaLabel").textContent = `Dia ${diaAtual} de ${diasUteisSemana} da semana`;
@@ -671,8 +683,8 @@ function render(dados) {
 
   const closer = groupStats(vendedores, CLOSER_SQUADS);
   const gc = groupStats(vendedores, GC_SQUADS);
-  const closerStatus = statusFromRatio(closer.pct / ritmoBaseGeral);
-  const gcStatus = statusFromRatio(gc.pct / ritmoBaseGeral);
+  const closerStatus = statusPeriodo(closer.pct, ritmoBaseGeral, diaAtual);
+  const gcStatus = statusPeriodo(gc.pct, ritmoBaseGeral, diaAtual);
 
   const barPct = Math.min(pctAtual * 100, 100);
   const markerPct = Math.min((ritmoEsperado || 0) * 100, 100);
@@ -736,7 +748,7 @@ function render(dados) {
     <div class="pagina" data-pagina="1">
       <div class="grid">
         <div class="subcards-grid-2col">
-          ${CATEGORIAS_TOPO.map(cat => subCardHtml(cat, vendedores, ritmoBaseGeral, "grande")).join("")}
+          ${CATEGORIAS_TOPO.map(cat => subCardHtml(cat, vendedores, ritmoBaseGeral, "grande", diaAtual)).join("")}
         </div>
       </div>
     </div>
@@ -744,8 +756,8 @@ function render(dados) {
     <div class="pagina" data-pagina="2">
       <div class="grid">
         <div class="subcards-grid-2col">
-          ${CATEGORIAS_FARMERS.map(cat => subCardHtml(cat, vendedores, ritmoBaseGeral, "grande")).join("")}
-          ${CATEGORIAS_RESTO.map(cat => subCardHtml(cat, vendedores, ritmoBaseGeral, "grande")).join("")}
+          ${CATEGORIAS_FARMERS.map(cat => subCardHtml(cat, vendedores, ritmoBaseGeral, "grande", diaAtual)).join("")}
+          ${CATEGORIAS_RESTO.map(cat => subCardHtml(cat, vendedores, ritmoBaseGeral, "grande", diaAtual)).join("")}
         </div>
       </div>
     </div>
@@ -771,8 +783,8 @@ function render(dados) {
     </div>
   `;
 
-  desenharGrafico("chartCloser", (c) => { chartCloser = c; }, chartCloser, closer.todos, ritmoBaseGeral);
-  desenharGrafico("chartGC", (c) => { chartGC = c; }, chartGC, gc.todos, ritmoBaseGeral);
+  desenharGrafico("chartCloser", (c) => { chartCloser = c; }, chartCloser, closer.todos, ritmoBaseGeral, diaAtual);
+  desenharGrafico("chartGC", (c) => { chartGC = c; }, chartGC, gc.todos, ritmoBaseGeral, diaAtual);
 
   // Reaplica qual página está visível (o innerHTML acima recria os nós, então perde a classe a cada refresh de dado/tema)
   mostrarPagina(paginaAtual);
