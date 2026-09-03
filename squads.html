@@ -66,8 +66,16 @@
     flex-direction: column;
     overflow: hidden;
   }
-  .header { flex: none; display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:18px; flex-wrap:wrap; gap:10px; }
+  .header { position:relative; flex: none; display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:18px; flex-wrap:wrap; gap:10px; }
   .header .logo { height: 42px; width:auto; display:block; margin-bottom:6px; }
+  /* Página mensal: o rótulo "MENSAL setembro/2026" sai do fluxo normal (fica embaixo do
+     logo, alinhado à esquerda) e vai pro centro do cabeçalho, bem maior — pedido do
+     Felipe pra dar mais destaque ao mês corrente. Só nessa página; a semanal continua
+     como sempre foi. */
+  .header .semana.semana--mensal {
+    position:absolute; left:50%; top:50%; transform:translate(-50%, -50%);
+    font-size:44px; text-align:center; white-space:nowrap;
+  }
   /* Tema claro: logo vira preto sólido — no escuro fica como é. */
   :root[data-theme="light"] .header .logo {
     filter: brightness(0);
@@ -100,11 +108,11 @@
   .bar-legend { display:flex; justify-content:space-between; margin-top:10px; font-size:13px; color:var(--texto-sub); }
   .ladder { grid-column: span 12; }
   .ladder-row { display:flex; gap:14px; overflow-x:auto; padding-bottom:4px; }
-  .chip { flex:1 1 0; min-width:150px; border-radius:16px; padding:20px 18px; text-align:center; border:1px solid var(--borda); background:var(--cinza-bg); }
+  .chip { flex:1 1 0; min-width:150px; border-radius:16px; padding:28px 22px; text-align:center; border:1px solid var(--borda); background:var(--cinza-bg); }
   .chip.proximo { background:var(--dourado-bg); border-color:var(--dourado); }
-  .chip .tier { font-size:16px; font-weight:700; color:var(--texto-sub); }
+  .chip .tier { font-size:20px; font-weight:700; color:var(--texto-sub); }
   .chip.proximo .tier { color:var(--dourado); }
-  .chip .valor { font-size:26px; font-weight:800; margin-top:8px; }
+  .chip .valor { font-size:36px; font-weight:800; margin-top:10px; }
   .rank-card { grid-column: span 12; position:relative; }
   .rank-card--destaque {
     border: 3px solid var(--destaque-vivo);
@@ -309,7 +317,9 @@ function parseSquads(payload) {
 }
 
 function ladderHtml(meta, fat) {
-  const tiers = [70, 80, 90, 100, 110, 120, 130, 140];
+  // Só até 100% da meta — o .chip usa flex:1 1 0, então com menos patamares cada um
+  // cresce e ocupa o espaço da régua inteira sozinho, ficando bem mais evidente.
+  const tiers = [70, 80, 90, 100];
   let proximoMarcado = false;
   return tiers.map(t => {
     const faltaVal = (meta * t / 100) - fat;
@@ -426,7 +436,9 @@ function render(dados) {
   const { semanaLabel, mesLabel, squads } = dados;
 
   labelPorPagina = [limparSemanaLabel(semanaLabel) || "Semana comercial", formatarLabelMensal(mesLabel)];
-  document.getElementById("semanaLabel").textContent = labelPorPagina[paginaAtual] || labelPorPagina[0];
+  const semanaLabelEl = document.getElementById("semanaLabel");
+  semanaLabelEl.textContent = labelPorPagina[paginaAtual] || labelPorPagina[0];
+  semanaLabelEl.classList.toggle("semana--mensal", paginaAtual === 1);
   document.getElementById("atualizadoLabel").textContent = "última leitura: " + new Date().toLocaleString("pt-BR");
 
   const closerSem = somaGrupo(squads, CLOSER_SQUADS, "metaSemanal", "faturadoSemanal");
@@ -592,7 +604,10 @@ function mostrarPagina(indice) {
   const paginas = document.querySelectorAll("#conteudo .pagina");
   paginas.forEach((p, i) => p.classList.toggle("pagina-ativa", i === indice));
   const label = document.getElementById("semanaLabel");
-  if (label) label.textContent = labelPorPagina[indice] || labelPorPagina[0];
+  if (label) {
+    label.textContent = labelPorPagina[indice] || labelPorPagina[0];
+    label.classList.toggle("semana--mensal", indice === 1);
+  }
 }
 function agendarProximaPagina() {
   clearTimeout(timerProximaPagina);
