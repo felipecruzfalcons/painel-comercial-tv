@@ -230,6 +230,20 @@ function extrairDia(dataStr) {
   return m ? parseInt(m[3], 10) : 0;
 }
 
+// "yyyy-MM" da linha, pra filtrar só o mês corrente. Sem isso, o eixo X (que só olha o
+// dia, 1-31, pra não sofrer deslocamento de fuso) misturaria dia 5 de setembro com dia 5
+// de agosto assim que a aba de histórico acumular mais de um mês de snapshots — mês novo
+// vira automático (não precisa mexer em nada aqui), essa checagem é só o cinto de
+// segurança pra nunca misturar mês errado no gráfico.
+function extrairAnoMes(dataStr) {
+  const m = String(dataStr || "").match(/(\d{4})-(\d{2})-(\d{2})/);
+  return m ? m[1] + "-" + m[2] : "";
+}
+function anoMesAtual() {
+  const hoje = new Date();
+  return hoje.getFullYear() + "-" + String(hoje.getMonth() + 1).padStart(2, "0");
+}
+
 function diasNoMesAtual() {
   const hoje = new Date();
   return new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
@@ -248,7 +262,8 @@ const EXCLUDE_VENDEDORES = ["HADYJA SARAIVA", "P MARANHAO", "P MARANHÃO"];
 
 // Linha 0 da planilha de histórico é o cabeçalho ["Data","Vendedor","Squad","Resultado"].
 function parseHistorico(payload) {
-  const rows = (payload.rows || []).slice(1).filter(r => r[0] && r[1]);
+  const mesAtual = anoMesAtual();
+  const rows = (payload.rows || []).slice(1).filter(r => r[0] && r[1] && extrairAnoMes(r[0]) === mesAtual);
   const porVendedor = {};
   rows.forEach(r => {
     const dia = extrairDia(r[0]);
