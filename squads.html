@@ -74,7 +74,7 @@
      como sempre foi. */
   .header .semana.semana--mensal {
     position:absolute; left:50%; top:50%; transform:translate(-50%, -50%);
-    font-size:44px; text-align:center; white-space:nowrap;
+    font-size:58px; text-align:center; white-space:nowrap;
   }
   /* Tema claro: logo vira preto sólido — no escuro fica como é. */
   :root[data-theme="light"] .header .logo {
@@ -152,20 +152,21 @@
   }
   .theme-toggle:hover { border-color: var(--dourado); }
 
-  /* ===== "Corrida" — barra 3D grande, estilo gráfico de squads (referência do Felipe) ===== */
-  .corrida-titulo { font-weight:800; font-style:italic; text-transform:uppercase; text-align:center; font-size:19px; margin-bottom:12px; letter-spacing:.02em; }
-  .corrida-row { display:flex; align-items:center; gap:14px; margin-bottom:16px; }
-  .corrida-row:last-child { margin-bottom:8px; }
-  .corrida-logo-wrap { display:flex; flex-direction:column; align-items:center; gap:5px; flex-shrink:0; width:100px; }
-  .corrida-logo { position:relative; overflow:hidden; width:100px; height:100px; border-radius:16px; background:var(--cinza-bg); color:var(--texto); font-weight:800; font-size:18px; display:flex; align-items:center; justify-content:center; box-shadow:0 7px 16px rgba(0,0,0,.35); flex-shrink:0; }
+  /* ===== "Corrida" — barra 3D grande, estilo gráfico de squads (referência do Felipe).
+     Tamanhos aumentados (era bem menor que o card, sobrava muito vazio) pra ler de longe. */
+  .corrida-titulo { font-weight:800; font-style:italic; text-transform:uppercase; text-align:center; font-size:26px; margin-bottom:20px; letter-spacing:.02em; }
+  .corrida-row { display:flex; align-items:center; gap:20px; margin-bottom:26px; }
+  .corrida-row:last-child { margin-bottom:10px; }
+  .corrida-logo-wrap { display:flex; flex-direction:column; align-items:center; gap:6px; flex-shrink:0; width:140px; }
+  .corrida-logo { position:relative; overflow:hidden; width:140px; height:140px; border-radius:20px; background:var(--cinza-bg); color:var(--texto); font-weight:800; font-size:24px; display:flex; align-items:center; justify-content:center; box-shadow:0 7px 16px rgba(0,0,0,.35); flex-shrink:0; }
   .corrida-logo img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
-  .corrida-posicao { font-weight:800; font-size:14px; color:var(--texto-sub); }
-  .corrida-bar-area { position:relative; flex:1 1 auto; min-width:0; height:62px; }
+  .corrida-posicao { font-weight:800; font-size:18px; color:var(--texto-sub); }
+  .corrida-bar-area { position:relative; flex:1 1 auto; min-width:0; height:100px; }
   .corrida-bar {
     position:relative; height:100%; min-width:6%;
-    border-radius:12px 4px 4px 12px;
+    border-radius:16px 6px 6px 16px;
     display:flex; align-items:center; justify-content:center;
-    font-weight:800; font-style:italic; font-size:20px; color:#1a1a1a;
+    font-weight:800; font-style:italic; font-size:27px; color:#1a1a1a;
     box-shadow: 0 8px 0 rgba(0,0,0,.2), 0 12px 18px rgba(0,0,0,.3);
     transition: width .6s ease;
   }
@@ -177,9 +178,13 @@
   .corrida-bar.cor-1 { background: linear-gradient(180deg, #6dffb3 0%, #00e676 45%, #009e56 100%); }
   .corrida-bar.cor-2 { background: linear-gradient(180deg, #ffe066 0%, #ffb300 45%, #c77800 100%); }
   .corrida-bar-nome { text-shadow: 0 1px 0 rgba(255,255,255,.25); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:92%; }
-  .corrida-bar-valor { position:absolute; top:50%; transform:translateY(-50%); margin-left:calc(14px + 1cm); font-weight:800; font-size:30px; white-space:nowrap; }
-  .corrida-eixo { display:flex; justify-content:space-between; margin-top:6px; font-size:13px; color:var(--texto-sub); }
-  .corrida-eixo-wrap { margin-left:114px; }
+  /* Valor fora da barra (barras curtas, sobra espaço no card à direita) */
+  .corrida-bar-valor { position:absolute; top:50%; transform:translateY(-50%); margin-left:calc(18px + 1cm); font-weight:800; font-size:38px; white-space:nowrap; }
+  /* Valor DENTRO da barra (barras compridas — perto ou no máximo do eixo): sem isso o
+     número ficava posicionado além da borda do card e sumia (ex.: líder disparado). */
+  .corrida-bar-valor-dentro { position:absolute; right:22px; top:50%; transform:translateY(-50%); font-weight:800; font-style:italic; font-size:27px; color:#1a1a1a; text-shadow:0 1px 0 rgba(255,255,255,.35); white-space:nowrap; }
+  .corrida-eixo { display:flex; justify-content:space-between; margin-top:8px; font-size:16px; color:var(--texto-sub); }
+  .corrida-eixo-wrap { margin-left:160px; }
   .link-outro-painel {
     margin-top: 8px;
     display: inline-block;
@@ -387,6 +392,9 @@ function corridaHtml(titulo, squadsDoGrupo, periodo, eixoMax) {
   const linhas = ordenado.map((s, i) => {
     const pct = s[pctKey];
     const largura = Math.min(Math.max((pct / eixoMax) * 100, 6), 100);
+    // Barra comprida (perto do fim do eixo): o valor não cabe mais fora do card à direita
+    // e sumia (ficava posicionado além da borda). A partir daqui, mostra DENTRO da barra.
+    const valorDentro = largura >= 78;
     return `
       <div class="corrida-row">
         <div class="corrida-logo-wrap">
@@ -396,8 +404,9 @@ function corridaHtml(titulo, squadsDoGrupo, periodo, eixoMax) {
         <div class="corrida-bar-area">
           <div class="corrida-bar ${cores[i] || 'cor-2'}" style="width:${largura}%">
             <span class="corrida-bar-nome">${s.nome}</span>
+            ${valorDentro ? `<span class="corrida-bar-valor-dentro">${fmtPct(pct)}</span>` : ""}
           </div>
-          <div class="corrida-bar-valor" style="left:${largura}%">${fmtPct(pct)}</div>
+          ${valorDentro ? "" : `<div class="corrida-bar-valor" style="left:${largura}%">${fmtPct(pct)}</div>`}
         </div>
       </div>
     `;
