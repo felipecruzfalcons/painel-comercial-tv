@@ -68,10 +68,9 @@
   }
   .header { position:relative; flex: none; display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:18px; flex-wrap:wrap; gap:10px; }
   .header .logo { height: 42px; width:auto; display:block; margin-bottom:6px; }
-  /* Página mensal: o rótulo "MENSAL setembro/2026" sai do fluxo normal (fica embaixo do
-     logo, alinhado à esquerda) e vai pro centro do cabeçalho, bem maior — pedido do
-     Felipe pra dar mais destaque ao mês corrente. Só nessa página; a semanal continua
-     como sempre foi. */
+  /* O rótulo do período ("MENSAL SETEMBRO/2026" / "SEMANA 2 (SET)") sai do fluxo normal
+     (ficava embaixo do logo, alinhado à esquerda) e vai pro centro do cabeçalho, bem maior —
+     pedido do Felipe pra dar mais destaque, em ambas as páginas. */
   .header .semana.semana--mensal {
     position:absolute; left:50%; top:50%; transform:translate(-50%, -50%);
     font-size:58px; text-align:center; white-space:nowrap;
@@ -103,7 +102,7 @@
   .bar-wrap { position:relative; margin-top:32px; height:46px; background:var(--cinza-bg); border:1px solid var(--borda); border-radius:999px; overflow:visible; }
   .bar-fill { position:absolute; left:0; top:0; height:100%; border-radius:999px; transition:width .6s ease; }
   .bar-marker { position:absolute; top:-10px; bottom:-10px; width:4px; background:var(--dourado); }
-  .bar-marker-label { position:absolute; top:-38px; transform:translateX(-50%); font-size:20px; font-weight:800; color:var(--dourado); white-space:nowrap; }
+  .bar-marker-label { position:absolute; top:-46px; transform:translateX(-50%); font-size:28px; font-weight:800; color:var(--dourado); white-space:nowrap; }
   .bar-marker-label--alt { top:-64px; }
   .bar-legend { display:flex; justify-content:space-between; margin-top:14px; font-size:16px; color:var(--texto-sub); }
   .ladder { grid-column: span 12; }
@@ -198,6 +197,7 @@
   .corrida--mensal .corrida-bar-area { height:70px; }
   .corrida--mensal .corrida-bar { border-radius:12px 4px 4px 12px; font-size:19px; box-shadow:0 6px 0 rgba(0,0,0,.2), 0 9px 14px rgba(0,0,0,.3); }
   .corrida--mensal .corrida-bar::after { top:3px; bottom:-6px; right:-12px; width:16px; }
+  .corrida--mensal .corrida-bar-nome { font-size:26px; }
   .corrida--mensal .corrida-bar-valor { margin-left:calc(14px + 1cm); font-size:27px; }
   .corrida--mensal .corrida-bar-valor-dentro { right:16px; font-size:19px; }
   .corrida--mensal .corrida-eixo { margin-top:6px; font-size:13px; }
@@ -467,7 +467,7 @@ function render(dados) {
   labelPorPagina = [limparSemanaLabel(semanaLabel) || "Semana comercial", formatarLabelMensal(mesLabel)];
   const semanaLabelEl = document.getElementById("semanaLabel");
   semanaLabelEl.textContent = labelPorPagina[paginaAtual] || labelPorPagina[0];
-  semanaLabelEl.classList.toggle("semana--mensal", paginaAtual === 1);
+  semanaLabelEl.classList.add("semana--mensal");
   document.getElementById("atualizadoLabel").textContent = "última leitura: " + new Date().toLocaleString("pt-BR");
 
   const closerSem = somaGrupo(squads, CLOSER_SQUADS, "metaSemanal", "faturadoSemanal");
@@ -635,7 +635,7 @@ function mostrarPagina(indice) {
   const label = document.getElementById("semanaLabel");
   if (label) {
     label.textContent = labelPorPagina[indice] || labelPorPagina[0];
-    label.classList.toggle("semana--mensal", indice === 1);
+    label.classList.add("semana--mensal");
   }
 }
 function agendarProximaPagina() {
