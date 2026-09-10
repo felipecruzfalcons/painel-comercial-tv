@@ -105,11 +105,11 @@
   .bar-legend { display:flex; justify-content:space-between; margin-top:10px; font-size:13px; color:var(--texto-sub); }
   .ladder { grid-column: span 12; }
   .ladder-row { display:flex; gap:12px; overflow-x:auto; padding-bottom:4px; }
-  .chip { flex:1 1 0; min-width:120px; border-radius:14px; padding:12px 14px; text-align:center; border:1px solid var(--borda); background:var(--cinza-bg); }
+  .chip { flex:1 1 0; min-width:140px; border-radius:16px; padding:20px 18px; text-align:center; border:1px solid var(--borda); background:var(--cinza-bg); }
   .chip.proximo { background:var(--dourado-bg); border-color:var(--dourado); }
-  .chip .tier { font-size:13px; font-weight:700; color:var(--texto-sub); }
+  .chip .tier { font-size:17px; font-weight:700; color:var(--texto-sub); }
   .chip.proximo .tier { color:var(--dourado); }
-  .chip .valor { font-size:17px; font-weight:800; margin-top:5px; }
+  .chip .valor { font-size:28px; font-weight:800; margin-top:8px; }
   .rank-card { grid-column: span 6; position:relative; }
   .rank-card--destaque {
     border: 3px solid var(--destaque-vivo);
@@ -477,7 +477,7 @@ const CATEGORIAS_FARMERS = [
 ];
 const CATEGORIAS_RESTO = [
   { nome: "Agência + Brindeiro", membros: ["JONATHAN SILVA", "LUCAS MATHEUS"] },
-  { nome: "Revendedor", membros: ["YURI PINHEIRO", "ELENICE MOURA"] },
+  { nome: "Revendedor", membros: ["YURI PINHEIRO"] },
   { nome: "Hunter Outbound", membros: ["ARTHUR FELIX"] }
 ];
 
@@ -538,7 +538,9 @@ function subCardHtml(categoria, todosVendedores, ritmoBase, variante, diaAtual) 
 }
 
 function ladderHtml(meta, fat) {
-  const tiers = [70, 80, 90, 100, 110, 120, 130, 140];
+  // Só até 110% da meta (igual ao ajuste já feito no painel de squads) — sem os patamares
+  // de 120% a 140%, os que restam ocupam mais espaço da régua e ficam mais evidentes.
+  const tiers = [70, 80, 90, 100, 110];
   let proximoMarcado = false;
   return tiers.map(t => {
     const faltaVal = (meta * t / 100) - fat;
