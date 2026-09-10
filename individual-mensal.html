@@ -487,8 +487,14 @@ function aplicarIsolamento(chart, nome) {
 // lugar certo). No momento em que alguém bate 100%, o eixo passa a se referenciar pelo 1º
 // colocado (o maior % entre todos), com folga até a próxima marca de 10 pra caber o ponto
 // dele por completo.
+// IMPORTANTE: olha só o valor ATUAL (último dia com dado) de cada vendedor, não qualquer
+// ponto histórico do mês — um valor fora da curva num dia já passado (ex.: sincronização
+// zoada de um dia específico, corrigida depois) não pode esticar o eixo pra sempre só
+// porque ficou registrado uma vez; o que importa é onde cada um está HOJE.
 function calcularEixoPctCompartilhado(vendedoresGeral) {
-  const maior = Math.max(...vendedoresGeral.flatMap(v => v.pontos.map(p => p.pct * 100)), 0);
+  const valoresAtuais = vendedoresGeral
+    .map(v => v.pontos.length ? v.pontos[v.pontos.length - 1].pct * 100 : 0);
+  const maior = Math.max(...valoresAtuais, 0);
   if (maior < 100) {
     return { max: 100, step: 10 };
   }
