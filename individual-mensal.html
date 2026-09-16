@@ -82,6 +82,32 @@
   .pagina-nav:hover { opacity:1; }
   .pagina-nav-btn { width:18px; height:18px; border-radius:50%; border:1px solid var(--borda); background:var(--card-bg); color:var(--texto-sub); font-size:11px; line-height:1; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0; }
   .pagina-nav-btn:hover { border-color:var(--dourado); color:var(--dourado); }
+
+  /* ===== Corrida em barras (ranking) — substitui o gráfico de linhas cruzadas: 1 linha por
+     vendedor, sempre com nome visível em cima, foto e barra colorida pelo SQUAD (dourado =
+     Falcons/Maverick, branco = Stark/Nexus). --linha-h é recalculada em JS a partir da
+     altura real disponível ÷ número de vendedores, pra tudo caber sem cortar. */
+  .barra-lista { display:flex; flex-direction:column; flex:1 1 auto; min-height:0; overflow:hidden; --linha-h: 50px; }
+  .barra-row { flex:1 1 0; min-height:0; display:flex; align-items:center; gap:calc(var(--linha-h) * 0.22); padding:0 6px; border-radius:8px; cursor:pointer; }
+  .barra-row:hover { background:var(--cinza-bg); }
+  .barra-row.aberta { background:var(--cinza-bg); }
+  .barra-rank { flex:none; width:calc(var(--linha-h) * 0.5); text-align:center; font-weight:800; color:var(--texto-sub); font-size:calc(var(--linha-h) * 0.2); }
+  .barra-avatar { flex:none; width:calc(var(--linha-h) * 0.6); height:calc(var(--linha-h) * 0.6); border-radius:50%; object-fit:cover; border:2px solid var(--dourado); }
+  .barra-corpo { flex:1 1 auto; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:2px; }
+  .barra-nome { font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:calc(var(--linha-h) * 0.24); }
+  .barra-area { position:relative; height:calc(var(--linha-h) * 0.36); background:var(--cinza-bg); border-radius:6px; }
+  .barra-fill { position:absolute; left:0; top:0; height:100%; border-radius:6px 3px 3px 6px; min-width:4%; display:flex; align-items:center; justify-content:flex-end; transition:width .5s ease; }
+  .barra-fill.cor-dourado { background:linear-gradient(180deg, #ffe066 0%, #ffb300 45%, #c77800 100%); }
+  .barra-fill.cor-branco { background:linear-gradient(180deg, #ffffff 0%, #d9dce2 55%, #b7bcc6 100%); }
+  .barra-valor-dentro { margin-right:8px; font-weight:800; font-size:calc(var(--linha-h) * 0.2); white-space:nowrap; text-shadow:0 1px 0 rgba(255,255,255,.35); }
+  .barra-valor-fora { position:absolute; left:100%; top:50%; transform:translateY(-50%); margin-left:8px; font-weight:800; font-size:calc(var(--linha-h) * 0.2); white-space:nowrap; }
+
+  /* Trajetória semanal (aparece só quando clica numa barra) */
+  .detalhe-trajetoria { flex:0 0 auto; background:var(--cinza-bg); border:1px solid var(--dourado); border-radius:10px; padding:8px 14px 4px; margin:2px 0 8px; }
+  .detalhe-header { display:flex; justify-content:space-between; align-items:center; font-weight:800; font-size:13px; margin-bottom:2px; }
+  .detalhe-fechar { cursor:pointer; color:var(--texto-sub); background:none; border:none; font-size:16px; line-height:1; padding:2px 6px; }
+  .detalhe-fechar:hover { color:var(--dourado); }
+  .detalhe-chart-wrap { height:130px; position:relative; }
 </style>
 </head>
 <body>
@@ -121,10 +147,8 @@ const REFRESH_MS = 10 * 60 * 1000; // 10 min
 const CLOSER_SQUADS = ["FALCONS", "STARK"];
 const GC_SQUADS = ["MAVERICK", "NEXUS"];
 
-let chartCloser = null;
-let chartGC = null;
 let ultimoDados = null;
-const avatarCache = {}; // nome -> canvas circular (ou null se não achou foto)
+const avatarCache = {}; // nome -> data URL do avatar circular (com borda dourada)
 
 function toNum(v) {
   if (typeof v === "number") return v;
@@ -299,24 +323,13 @@ async function garantirAvatares(vendedores) {
       const img = await preloadFoto(v.nome);
       // Fonte em resolução bem mais alta que o tamanho exibido — evita ficar borrado
       // quando a TV é grande/4K e a foto acaba desenhada maior que 96px na tela.
-      avatarCache[v.nome] = avatarCircular(img, v.nome, 240);
+      // Agora vira <img> (não mais desenhada num canvas do Chart.js), então guarda como
+      // data URL — o avatar circular com borda dourada já sai pronto do avatarCircular().
+      avatarCache[v.nome] = avatarCircular(img, v.nome, 240).toDataURL("image/png");
     }
   }));
 }
 
-// Raio padrão do avatar — agora é sempre o MESMO para todo mundo (pedido do Felipe).
-// O novo desenho do gráfico (linha = % mensal, coluna = colocação atual) garante que cada
-// vendedor tem uma "raia" (linha de ranking) exclusiva, então duas fotos NUNCA competem
-// pelo mesmo espaço vertical — o raio só encolhe (igual pra todo mundo) se o gráfico tiver
-// tantas raias que o espaço entre elas for menor que o tamanho padrão.
-const RAIO_AVATAR_MAX = 23;
-const RAIO_AVATAR_MIN = 9;
-
-// Constrói, pra cada vendedor, a trilha de pontos {x: % do dia, y: colocação do dia}.
-// A colocação (ranking) é recalculada TODO dia, comparando só os vendedores desse mesmo
-// grupo (Closer ou GC): quem tem % maior fica com colocação menor (1 = primeiro lugar).
-// Em caso de empate (ex.: todo mundo a 0% no dia 1), desempata por ordem alfabética — é
-// por isso que o dia 1 sai naturalmente em ordem alfabética, sem precisar de caso especial.
 // Quinta-feira 23h59 = fechamento semanal oficial (ritual da empresa). Usa o mês/ano
 // atuais pra descobrir em qual dia do mês cada quinta cai.
 function ehFechamentoSemanal(dia) {
@@ -324,158 +337,178 @@ function ehFechamentoSemanal(dia) {
   return new Date(hoje.getFullYear(), hoje.getMonth(), dia).getDay() === 4; // 4 = quinta
 }
 
-function construirCorrida(vendedores) {
-  const diasSet = new Set();
-  vendedores.forEach(v => v.pontos.forEach(p => diasSet.add(p.dia)));
-  const dias = Array.from(diasSet).sort((a, b) => a - b);
+// "DD/MM" a partir do dia do mês (mês/ano = os atuais, já que o histórico só guarda o mês
+// corrente — ver extrairAnoMes).
+function formatarDataCurta(dia) {
+  const hoje = new Date();
+  return String(dia).padStart(2, "0") + "/" + String(hoje.getMonth() + 1).padStart(2, "0");
+}
 
-  const pctPorDia = {}; // nome -> { dia: pct }
-  vendedores.forEach(v => {
-    pctPorDia[v.nome] = {};
-    v.pontos.forEach(p => { pctPorDia[v.nome][p.dia] = p.pct; });
-  });
-  function pctNoDia(nome, dia) {
-    if (dia in pctPorDia[nome]) return pctPorDia[nome][dia];
-    let ultimo = 0;
-    for (const d of dias) { if (d <= dia && d in pctPorDia[nome]) ultimo = pctPorDia[nome][d]; }
-    return ultimo;
-  }
+// Pontos da trajetória semanal de UM vendedor: só os fechamentos de quinta-feira do mês +
+// o dia mais recente com dado (o "em andamento" da semana atual) — mesma regra de sempre,
+// calculada agora só sob demanda (quando o usuário clica pra abrir a trajetória de alguém),
+// não mais pra todo mundo de uma vez.
+function pontosSemanaisDe(v) {
+  if (!v.pontos.length) return [];
+  const ultimoDia = v.pontos[v.pontos.length - 1].dia;
+  return v.pontos.filter(p => ehFechamentoSemanal(p.dia) || p.dia === ultimoDia);
+}
 
-  // Em vez de 1 ponto por dia (16-17 pontos, ranking balançando toda hora por ruído dos
-  // primeiros dias), a trilha agora só marca os FECHAMENTOS SEMANAIS (quinta 23h59) — o
-  // valor continua sendo o acumulado do mês até aquele dia, só a quantidade de pontos cai
-  // bastante. O dia de hoje sempre entra também, como o ponto "em andamento" da semana atual.
-  const ultimoDiaGeral = dias[dias.length - 1];
-  const diasCorrida = dias.filter(d => ehFechamentoSemanal(d) || d === ultimoDiaGeral);
-
-  const rankPorDia = {}; // dia -> { nome: colocacao }
-  diasCorrida.forEach(dia => {
-    const ordenado = vendedores
-      .map(v => ({ nome: v.nome, pct: pctNoDia(v.nome, dia) }))
-      .sort((a, b) => b.pct - a.pct || a.nome.localeCompare(b.nome));
-    rankPorDia[dia] = {};
-    ordenado.forEach((v, idx) => { rankPorDia[dia][v.nome] = idx + 1; });
-  });
-
+// Monta a lista ordenada (maior % primeiro) pra desenhar em barras — 1 linha por vendedor.
+// Cor da BARRA pelo SQUAD (Falcons/Maverick = dourado, Stark/Nexus = branco — regra de
+// sempre, pedida de novo explicitamente ao trocar pro visual em barras). Cor do NÚMERO pela
+// PROJEÇÃO de fechamento do mês (verde/âmbar/vermelho, também como já era).
+function prepararListaBarras(vendedores) {
   const diasTotais = diasNoMesAtual();
-  const ultimoDia = ultimoDiaGeral;
-  const datasets = vendedores.map((v, i) => {
-    // Cor por SQUAD, não por pessoa: Falcons/Maverick em dourado, Stark/Nexus em branco —
-    // já que cada vendedor tem sua própria raia (rank) exclusiva, a cor não precisa mais
-    // diferenciar indivíduo por indivíduo, só o squad de cada um.
-    const cor = (v.squad === "FALCONS" || v.squad === "MAVERICK") ? "#ffcf33" : "#ffffff";
-    const pontos = diasCorrida.map(d => ({ x: +(pctNoDia(v.nome, d) * 100).toFixed(2), y: rankPorDia[d][v.nome], dia: d }));
-    const n = pontos.length;
-    const pctFinal = pctNoDia(v.nome, ultimoDia);
-    const rankFinal = rankPorDia[ultimoDia][v.nome];
-    const projecao = projetarFechamento(pctFinal, ultimoDia, diasTotais);
-    return {
-      label: v.nome,
-      data: pontos,
-      borderColor: cor,
-      backgroundColor: cor,
-      borderWidth: 2,
-      tension: 0,
-      fill: false,
-      // Sem isso, o Chart.js corta (clip) qualquer ponto/linha bem na borda da área do
-      // gráfico — e como quem é 1º ou último colocado tem os pontos deles exatamente na
-      // borda de cima/baixo, ficavam com a metade cortada. Libera a mesma folga que já
-      // existe no layout.padding, então nada mais fica pela metade.
-      clip: RAIO_AVATAR_MAX + 10,
-      // O ponto atual (o último dia) não é desenhado pelo Chart.js — o plugin
-      // avatarDeclutterPlugin desenha a foto dele à parte, na raia (colocação) dele.
-      pointStyle: "circle",
-      pointRadius: pontos.map((p, idx) => idx === n - 1 ? 0 : 3),
-      pointHoverRadius: pontos.map((p, idx) => idx === n - 1 ? 0 : 6),
-      _avatarImg: avatarCache[v.nome],
-      _corPct: corPorProjecao(projecao),
-      _pctTexto: (pctFinal * 100).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%",
-      _rankFinal: rankFinal,
-      _nome: v.nome,
-      _corBase: cor,
-    };
-  });
-
-  const nomePorRank = {};
-  datasets.forEach(ds => { nomePorRank[ds._rankFinal] = ds._nome; });
-  return { datasets, totalVendedores: vendedores.length, nomePorRank };
+  return vendedores
+    .map(v => {
+      const ultimo = v.pontos.length ? v.pontos[v.pontos.length - 1] : { dia: 0, pct: 0 };
+      const projecao = projetarFechamento(ultimo.pct, ultimo.dia, diasTotais);
+      return {
+        nome: v.nome,
+        squad: v.squad,
+        pct: ultimo.pct,
+        corBarra: (v.squad === "FALCONS" || v.squad === "MAVERICK") ? "cor-dourado" : "cor-branco",
+        corValor: corPorProjecao(projecao),
+        avatar: avatarCache[v.nome] || "",
+      };
+    })
+    .sort((a, b) => b.pct - a.pct || a.nome.localeCompare(b.nome));
 }
 
-// Desenha a foto de cada vendedor na "raia" (colocação) dele — como cada raia é exclusiva
-// (só um vendedor por colocação), NUNCA duas fotos competem pelo mesmo espaço vertical.
-// O raio é sempre o mesmo pra todo mundo (RAIO_AVATAR_MAX), só encolhendo — igual pra todos
-// — se o gráfico tiver raias mais estreitas do que o tamanho padrão.
-const avatarDeclutterPlugin = {
-  id: "avatarDeclutter",
-  afterDatasetsDraw(chart) {
-    const { ctx, chartArea } = chart;
-    const totalRaias = chart.data.datasets.length || 1;
-    const alturaRaia = totalRaias > 1 ? (chartArea.bottom - chartArea.top) / (totalRaias - 1) : (chartArea.bottom - chartArea.top);
-    const raio = Math.max(RAIO_AVATAR_MIN, Math.min(RAIO_AVATAR_MAX, alturaRaia / 2 - 3));
-    const fonte = Math.round(Math.max(10, Math.min(14, raio + 2)));
+function barraHtml(item, idx, eixoMax) {
+  const valorPct = item.pct * 100;
+  const largura = Math.min(Math.max((valorPct / eixoMax) * 100, 4), 100);
+  const valorDentro = largura >= 70;
+  const pctTxt = valorPct.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%";
+  const nomeEscapado = item.nome.replace(/'/g, "\\'");
+  return `
+    <div class="barra-row" onclick="alternarDetalhe(this, '${nomeEscapado}')">
+      <div class="barra-rank">${idx + 1}º</div>
+      <img class="barra-avatar" src="${item.avatar}" alt="">
+      <div class="barra-corpo">
+        <div class="barra-nome">${item.nome}</div>
+        <div class="barra-area">
+          <div class="barra-fill ${item.corBarra}" style="width:${largura}%">
+            ${valorDentro ? `<span class="barra-valor-dentro" style="color:${item.corValor}">${pctTxt}</span>` : ""}
+          </div>
+          ${valorDentro ? "" : `<span class="barra-valor-fora" style="color:${item.corValor}">${pctTxt}</span>`}
+        </div>
+      </div>
+    </div>
+  `;
+}
 
-    const itens = [];
-    chart.data.datasets.forEach((ds, dsIndex) => {
-      const meta = chart.getDatasetMeta(dsIndex);
-      if (meta.hidden || !ds.data.length) return;
-      const ultimoIdx = ds.data.length - 1;
-      const ponto = meta.data[ultimoIdx];
-      if (!ponto) return;
-      itens.push({ x: ponto.x, y: ponto.y, avatar: ds._avatarImg, cor: ds._corPct, texto: ds._pctTexto, nome: ds._nome, dimmed: !!ds._dimmed });
-    });
-    // Guarda a posição/raio de cada foto pra o clique (aplicarIsolamento) saber em qual
-    // vendedor o usuário tocou — recalculado a cada frame, sempre reflete o desenho atual.
-    chart._avatarHitboxes = itens.map(it => ({ x: it.x, y: it.y, raio, nome: it.nome }));
-    if (!itens.length) return;
+// Tamanho das linhas (avatar, fontes) sai da CSS var --linha-h, recalculada aqui a partir
+// da altura real disponível ÷ número de vendedores — mesma ideia de antes (o raio do avatar
+// era recalculado a partir do espaço por "raia"), só que em CSS puro agora.
+function ajustarAlturaLinhas(el) {
+  const linhas = el.querySelectorAll(".barra-row").length;
+  if (!linhas) return;
+  // Quando a trajetória de alguém está aberta, o painel dela também ocupa espaço dentro da
+  // mesma lista — desconta a altura dele antes de dividir, senão as linhas ficam com o
+  // avatar/fonte grandes demais pro espaço que sobrou de verdade.
+  const painel = el.querySelector(".detalhe-trajetoria");
+  const alturaPainel = painel ? painel.getBoundingClientRect().height : 0;
+  const alturaLinha = (el.clientHeight - alturaPainel) / linhas;
+  el.style.setProperty("--linha-h", Math.max(24, Math.min(64, alturaLinha)) + "px");
+}
+function recalcularTodasAsListas() {
+  document.querySelectorAll(".barra-lista").forEach(ajustarAlturaLinhas);
+}
 
-    itens.forEach(it => {
-      if (it.avatar) {
-        ctx.save();
-        ctx.globalAlpha = it.dimmed ? 0.22 : 1;
-        ctx.beginPath();
-        ctx.arc(it.x, it.y, raio, 0, Math.PI * 2);
-        ctx.closePath();
-        ctx.clip();
-        ctx.drawImage(it.avatar, it.x - raio, it.y - raio, raio * 2, raio * 2);
-        ctx.restore();
-      }
-    });
-    itens.forEach(it => {
-      ctx.save();
-      ctx.globalAlpha = it.dimmed ? 0.35 : 1;
-      ctx.font = "bold " + fonte + "px sans-serif";
-      ctx.fillStyle = it.cor;
-      ctx.textAlign = "left";
-      ctx.textBaseline = "middle";
-      ctx.fillText(it.texto, it.x + raio + 6, it.y);
-      ctx.restore();
-    });
+function renderListaBarras(containerId, vendedores, eixoMax) {
+  const el = document.getElementById(containerId);
+  if (!vendedores.length) {
+    el.innerHTML = '<div class="empty-msg">Sem dados no período.</div>';
+    return;
   }
-};
-Chart.register(avatarDeclutterPlugin);
-
-// Converte "#rrggbb" pra "rgba(...)" com opacidade custom — usado pra "apagar" a linha dos
-// vendedores não selecionados quando alguém clica numa foto pra isolar só a trilha dele.
-function hexParaRgba(hex, alpha) {
-  const h = String(hex).replace("#", "");
-  const r = parseInt(h.substring(0, 2), 16);
-  const g = parseInt(h.substring(2, 4), 16);
-  const b = parseInt(h.substring(4, 6), 16);
-  return "rgba(" + r + ", " + g + ", " + b + ", " + alpha + ")";
+  const lista = prepararListaBarras(vendedores);
+  el.innerHTML = lista.map((item, idx) => barraHtml(item, idx, eixoMax)).join("");
+  ajustarAlturaLinhas(el);
+  if (window.ResizeObserver) {
+    new ResizeObserver(() => ajustarAlturaLinhas(el)).observe(el);
+  }
 }
 
-// Clique numa foto: isola a trilha daquele vendedor (apaga as outras). Clicar de novo na
-// mesma foto (ou não achar ninguém no clique) volta a mostrar todo mundo.
-function aplicarIsolamento(chart, nome) {
-  const jaEstavaIsolado = chart._nomeIsolado === nome;
-  chart._nomeIsolado = jaEstavaIsolado ? null : nome;
-  chart.data.datasets.forEach(ds => {
-    const destacado = !chart._nomeIsolado || ds._nome === chart._nomeIsolado;
-    ds.borderColor = destacado ? ds._corBase : hexParaRgba(ds._corBase, 0.12);
-    ds.backgroundColor = ds.borderColor;
-    ds._dimmed = !destacado;
+// ===== Trajetória semanal: abre ao clicar numa barra, fecha ao clicar de novo (ou clicar
+// em outra pessoa — só uma trajetória fica aberta por vez). Substitui o "clique isola a
+// linha" do gráfico antigo pelo mesmo objetivo (ver a história de UM vendedor), só que
+// agora num painel dedicado com o ponto de cada semana, como pedido. =====
+let detalheAtual = null;
+let chartDetalhe = null;
+
+function fecharDetalhe() {
+  const el = document.getElementById("detalheTrajetoria");
+  if (el) el.remove();
+  document.querySelectorAll(".barra-row.aberta").forEach(r => r.classList.remove("aberta"));
+  if (chartDetalhe) { chartDetalhe.destroy(); chartDetalhe = null; }
+  detalheAtual = null;
+  recalcularTodasAsListas();
+}
+
+function alternarDetalhe(rowEl, nome) {
+  const jaAberto = detalheAtual === nome;
+  fecharDetalhe();
+  if (jaAberto) return;
+  rowEl.classList.add("aberta");
+  detalheAtual = nome;
+
+  const v = (ultimoDados || []).find(x => x.nome === nome);
+  const pontos = v ? pontosSemanaisDe(v) : [];
+
+  const painel = document.createElement("div");
+  painel.className = "detalhe-trajetoria";
+  painel.id = "detalheTrajetoria";
+  painel.innerHTML = `
+    <div class="detalhe-header">
+      <span>Trajetória semanal — ${nome}</span>
+      <button class="detalhe-fechar" onclick="event.stopPropagation(); fecharDetalhe();">✕</button>
+    </div>
+    <div class="detalhe-chart-wrap"><canvas id="canvasDetalhe"></canvas></div>
+  `;
+  rowEl.insertAdjacentElement("afterend", painel);
+  recalcularTodasAsListas();
+
+  if (!pontos.length) {
+    painel.querySelector(".detalhe-chart-wrap").innerHTML = '<div class="empty-msg" style="padding:14px;">Sem pontos suficientes ainda.</div>';
+    return;
+  }
+
+  const labels = pontos.map(p => formatarDataCurta(p.dia));
+  const valores = pontos.map(p => +(p.pct * 100).toFixed(2));
+  const maiorLocal = Math.max(...valores, 0);
+  const maxLocal = maiorLocal < 100 ? 100 : Math.ceil(maiorLocal / 10) * 10 + 10;
+
+  const ctx = document.getElementById("canvasDetalhe").getContext("2d");
+  chartDetalhe = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{
+        data: valores,
+        borderColor: "#ffcf33",
+        backgroundColor: "#ffcf33",
+        borderWidth: 2.5,
+        tension: 0,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        fill: false,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (item) => item.parsed.y.toLocaleString("pt-BR", { minimumFractionDigits: 1 }) + "%" } },
+      },
+      scales: {
+        x: { ticks: { color: corTextoSub(), font: { size: 11 } }, grid: { color: corGrid() } },
+        y: { min: 0, max: maxLocal, ticks: { color: corTextoSub(), font: { size: 11 }, callback: (v) => v + "%" }, grid: { color: corGrid() } },
+      },
+    },
   });
-  chart.update("none");
 }
 
 // Calcula um único eixo de % (máximo + intervalo entre linhas) a partir de TODOS os
@@ -504,79 +537,12 @@ function calcularEixoPctCompartilhado(vendedoresGeral) {
   return { max, step };
 }
 
-function desenharCorrida(canvasId, chartRefSetter, chartRefAtual, vendedores, eixoPct) {
-  const wrap = document.getElementById(canvasId).closest(".chart-wrap");
-  if (!vendedores.length) {
-    wrap.innerHTML = '<div class="empty-msg">Sem dados no período.</div>';
-    return;
-  }
-  if (chartRefAtual) chartRefAtual.destroy();
-  const ctx = document.getElementById(canvasId).getContext("2d");
-  const { datasets, totalVendedores, nomePorRank } = construirCorrida(vendedores);
-  const chart = new Chart(ctx, {
-    type: "line",
-    data: { datasets },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      // Top/bottom precisam de folga >= raio do avatar, senão a foto do 1º e do último
-      // colocado (que ficam bem na borda do gráfico) fica cortada pelo limite do canvas.
-      layout: { padding: { top: RAIO_AVATAR_MAX + 6, right: 90, bottom: RAIO_AVATAR_MAX + 6, left: 6 } },
-      // Clicar na foto de um vendedor isola a trilha dele (apaga as outras); clicar de
-      // novo (ou clicar fora de qualquer foto) volta a mostrar todo mundo.
-      onClick: (evt, elements, chartInstance) => {
-        const hits = chartInstance._avatarHitboxes || [];
-        const alvo = hits.find(h => Math.hypot(evt.x - h.x, evt.y - h.y) <= h.raio);
-        aplicarIsolamento(chartInstance, alvo ? alvo.nome : null);
-      },
-      onHover: (evt, elements, chartInstance) => {
-        const hits = chartInstance._avatarHitboxes || [];
-        const sobreFoto = hits.some(h => Math.hypot(evt.x - h.x, evt.y - h.y) <= h.raio);
-        if (evt.native && evt.native.target) evt.native.target.style.cursor = sobreFoto ? "pointer" : "default";
-      },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            title: (items) => items[0]?.dataset.label || "",
-            label: (item) => "Dia " + item.raw.dia + " · " + item.parsed.x.toLocaleString("pt-BR", { minimumFractionDigits: 1 }) + "%"
-          }
-        }
-      },
-      scales: {
-        x: {
-          type: "linear",
-          min: 0,
-          max: eixoPct.max,
-          title: { display: true, text: "% da meta mensal", color: corTextoSub(), font: { size: 13, weight: "700" } },
-          ticks: { color: corTextoSub(), stepSize: eixoPct.step, callback: (v) => v + "%" },
-          grid: { color: corGrid() }
-        },
-        y: {
-          type: "linear",
-          reverse: true,
-          min: 1,
-          max: totalVendedores,
-          title: { display: false },
-          ticks: {
-            color: corTextoSub(),
-            stepSize: 1,
-            font: { size: 10, weight: "600" },
-            callback: (v) => nomePorRank[v] || ""
-          },
-          grid: { color: corGrid() }
-        }
-      }
-    }
-  });
-  chartRefSetter(chart);
-}
-
 async function render(dados) {
   ultimoDados = dados;
   document.getElementById("atualizadoLabel").textContent = "última leitura: " + new Date().toLocaleString("pt-BR");
 
   await garantirAvatares(dados);
+  fecharDetalhe();
 
   const closerVend = dados.filter(v => CLOSER_SQUADS.includes(v.squad));
   const gcVend = dados.filter(v => GC_SQUADS.includes(v.squad));
@@ -585,20 +551,20 @@ async function render(dados) {
     <div class="pagina" data-pagina="0">
       <div class="card">
         <div class="card-titulo"> · Closer (Falcons + Stark)</div>
-        <div class="chart-wrap"><canvas id="chartCloser"></canvas></div>
+        <div class="barra-lista" id="listaCloser"></div>
       </div>
     </div>
     <div class="pagina" data-pagina="1">
       <div class="card">
         <div class="card-titulo"> · Gerentes de Contas (Maverick + Nexus)</div>
-        <div class="chart-wrap"><canvas id="chartGC"></canvas></div>
+        <div class="barra-lista" id="listaGC"></div>
       </div>
     </div>
   `;
 
   const eixoPct = calcularEixoPctCompartilhado(dados);
-  desenharCorrida("chartCloser", (c) => { chartCloser = c; }, chartCloser, closerVend, eixoPct);
-  desenharCorrida("chartGC", (c) => { chartGC = c; }, chartGC, gcVend, eixoPct);
+  renderListaBarras("listaCloser", closerVend, eixoPct.max);
+  renderListaBarras("listaGC", gcVend, eixoPct.max);
 
   mostrarPagina(paginaAtual);
   agendarProximaPagina();
