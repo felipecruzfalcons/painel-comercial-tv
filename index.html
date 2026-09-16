@@ -91,17 +91,17 @@
   .card-label { font-size:13px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--texto-sub); margin-bottom:10px; display:flex; align-items:center; gap:7px; }
   .hero { grid-column: span 12; padding:28px 32px; }
   .hero-top { display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:18px; }
-  .hero-num { font-size:76px; font-weight:800; line-height:1; }
+  .hero-num { font-size:110px; font-weight:800; line-height:1; }
   .hero-sub { font-size:18px; color:var(--texto-sub); margin-top:8px; }
   .status-badge { display:inline-flex; align-items:center; gap:7px; padding:10px 16px; border-radius:999px; font-weight:700; font-size:15px; white-space:nowrap; }
   .status-vermelho { background:var(--vermelho-bg); color:var(--vermelho); }
   .status-ambar { background:var(--ambar-bg); color:var(--ambar); }
   .status-verde { background:var(--verde-bg); color:var(--verde); }
-  .bar-wrap { position:relative; margin-top:22px; height:26px; background:var(--cinza-bg); border:1px solid var(--borda); border-radius:999px; overflow:visible; }
+  .bar-wrap { position:relative; margin-top:32px; height:26px; background:var(--cinza-bg); border:1px solid var(--borda); border-radius:999px; overflow:visible; }
   .bar-fill { position:absolute; left:0; top:0; height:100%; border-radius:999px; transition:width .6s ease; }
   .bar-marker { position:absolute; top:-7px; bottom:-7px; width:3px; background:var(--dourado); }
-  .bar-marker-label { position:absolute; top:-28px; transform:translateX(-50%); font-size:13px; font-weight:700; color:var(--dourado); white-space:nowrap; }
-  .bar-marker-label--alt { top:-48px; }
+  .bar-marker-label { position:absolute; top:-38px; transform:translateX(-50%); font-size:22px; font-weight:800; color:var(--dourado); white-space:nowrap; }
+  .bar-marker-label--alt { top:-68px; }
   .bar-legend { display:flex; justify-content:space-between; margin-top:10px; font-size:13px; color:var(--texto-sub); }
   .ladder { grid-column: span 12; }
   .ladder-row { display:flex; gap:12px; overflow-x:auto; padding-bottom:4px; }
@@ -707,7 +707,6 @@ function render(dados) {
         <div class="card hero">
           <div class="hero-top">
             <div>
-              <div class="card-label">Resultado semanal · time comercial (closer + gc)</div>
               <div class="hero-num" style="color: var(--${status === 'vermelho' ? 'vermelho' : status === 'ambar' ? 'ambar' : 'verde'})">${fmtPct(pctAtual)}</div>
               <div class="hero-sub">${fmtBRL(totalFat)} faturado de ${fmtBRL(totalMeta)} de meta semanal</div>
             </div>
