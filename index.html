@@ -147,7 +147,7 @@
   .p-right { margin-left:auto; text-align:right; }
   .p-pct { font-weight:800; font-size:20px; }
   .chart-card { grid-column: span 12; }
-  .chart-wrap { position:relative; height:320px; }
+  .chart-wrap { position:relative; height:460px; }
   .subcards-wrap { grid-column: span 12; display:flex; flex-wrap:wrap; align-items:stretch; gap:12px; }
   .subcard { flex:1 1 240px; min-width:240px; max-width:100%; overflow:hidden; background:var(--card-bg); border:1px solid var(--borda); border-radius:16px; padding:14px 16px; display:flex; flex-direction:column; }
   .subcard-title { font-size:13px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--texto-sub); margin-bottom:8px; }
@@ -571,8 +571,8 @@ function desenharGrafico(canvasId, chartRefSetter, chartRefAtual, vendedores, ri
         data: ordenado.map(v => +(v.pct * 100).toFixed(1)),
         backgroundColor: cores,
         borderRadius: 8,
-        barPercentage: 0.62,
-        categoryPercentage: 0.78
+        barPercentage: 0.82,
+        categoryPercentage: 0.9
       }]
     },
     options: {
@@ -588,7 +588,7 @@ function desenharGrafico(canvasId, chartRefSetter, chartRefAtual, vendedores, ri
           anchor: "end",
           align: "top",
           color: corTexto(),
-          font: { weight: "700", size: 12 },
+          font: { weight: "700", size: 14 },
           formatter: (v) => v.toLocaleString("pt-BR", { minimumFractionDigits: 1 }) + "%"
         }
       },
@@ -600,7 +600,8 @@ function desenharGrafico(canvasId, chartRefSetter, chartRefAtual, vendedores, ri
           grid: { color: corGrid() }
         },
         x: {
-          ticks: { color: corTexto(), font: { size: 12 }, maxRotation: 40, minRotation: 0 },
+          // Nome do consultor maior e em negrito — pedido do Felipe pra ler melhor de longe.
+          ticks: { color: corTexto(), font: { size: 15, weight: "700" }, maxRotation: 40, minRotation: 0 },
           grid: { display: false }
         }
       }
