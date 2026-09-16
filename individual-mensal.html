@@ -92,15 +92,19 @@
   .barra-row:hover { background:var(--cinza-bg); }
   .barra-row.aberta { background:var(--cinza-bg); }
   .barra-rank { flex:none; width:calc(var(--linha-h) * 0.5); text-align:center; font-weight:800; color:var(--texto-sub); font-size:calc(var(--linha-h) * 0.2); }
-  .barra-avatar { flex:none; width:calc(var(--linha-h) * 0.6); height:calc(var(--linha-h) * 0.6); border-radius:50%; object-fit:cover; border:2px solid var(--dourado); }
+  /* Foto ocupa a MESMA altura do bloco nome+barra (align-self:stretch + aspect-ratio:1
+     mantém redonda) — pedido do Felipe pra foto ficar maior, acompanhando o espaço total
+     da linha, e não um círculo pequeno e fixo. */
+  .barra-avatar { flex:none; align-self:stretch; height:auto; width:auto; aspect-ratio:1/1; border-radius:50%; object-fit:cover; border:2px solid var(--dourado); }
   .barra-corpo { flex:1 1 auto; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:2px; }
   .barra-nome { font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:calc(var(--linha-h) * 0.24); }
-  .barra-area { position:relative; height:calc(var(--linha-h) * 0.36); background:var(--cinza-bg); border-radius:6px; }
+  .barra-area { position:relative; height:calc(var(--linha-h) * 0.55); background:var(--cinza-bg); border-radius:6px; }
   .barra-fill { position:absolute; left:0; top:0; height:100%; border-radius:6px 3px 3px 6px; min-width:4%; display:flex; align-items:center; justify-content:flex-end; transition:width .5s ease; }
-  .barra-fill.cor-dourado { background:linear-gradient(180deg, #ffe066 0%, #ffb300 45%, #c77800 100%); }
-  .barra-fill.cor-branco { background:linear-gradient(180deg, #ffffff 0%, #d9dce2 55%, #b7bcc6 100%); }
-  .barra-valor-dentro { margin-right:8px; font-weight:800; font-size:calc(var(--linha-h) * 0.2); white-space:nowrap; text-shadow:0 1px 0 rgba(255,255,255,.35); }
-  .barra-valor-fora { position:absolute; left:100%; top:50%; transform:translateY(-50%); margin-left:8px; font-weight:800; font-size:calc(var(--linha-h) * 0.2); white-space:nowrap; }
+  .barra-fill.cor-verde { background:linear-gradient(180deg, #6dffb3 0%, #00e676 45%, #009e56 100%); }
+  .barra-fill.cor-amber { background:linear-gradient(180deg, #ffe066 0%, #ffb300 45%, #c77800 100%); }
+  .barra-fill.cor-vermelho { background:linear-gradient(180deg, #ff9a9a 0%, #ff5252 45%, #c62828 100%); }
+  .barra-valor-dentro { margin-right:8px; font-weight:800; font-size:calc(var(--linha-h) * 0.22); white-space:nowrap; color:#1a1a1a; text-shadow:0 1px 0 rgba(255,255,255,.35); }
+  .barra-valor-fora { position:absolute; top:50%; transform:translateY(-50%); margin-left:10px; font-weight:800; font-size:calc(var(--linha-h) * 0.22); white-space:nowrap; }
 
   /* Trajetória semanal (aparece só quando clica numa barra) */
   .detalhe-trajetoria { flex:0 0 auto; background:var(--cinza-bg); border:1px solid var(--dourado); border-radius:10px; padding:8px 14px 4px; margin:2px 0 8px; }
@@ -354,10 +358,20 @@ function pontosSemanaisDe(v) {
   return v.pontos.filter(p => ehFechamentoSemanal(p.dia) || p.dia === ultimoDia);
 }
 
+// Status (verde/âmbar/vermelho) a partir da PROJEÇÃO de fechamento do mês — mesma régua de
+// corPorProjecao (que devolve o hex), só que aqui devolve o nome pra virar classe CSS do
+// gradiente da barra.
+function statusProjecao(projecao) {
+  if (projecao >= 1) return "verde";
+  if (projecao >= 0.7) return "amber";
+  return "vermelho";
+}
+
 // Monta a lista ordenada (maior % primeiro) pra desenhar em barras — 1 linha por vendedor.
-// Cor da BARRA pelo SQUAD (Falcons/Maverick = dourado, Stark/Nexus = branco — regra de
-// sempre, pedida de novo explicitamente ao trocar pro visual em barras). Cor do NÚMERO pela
-// PROJEÇÃO de fechamento do mês (verde/âmbar/vermelho, também como já era).
+// Cor do NOME pelo SQUAD (Falcons/Maverick = dourado, Stark/Nexus = branco — regra de
+// sempre). Cor da BARRA (e do número) pela PROJEÇÃO de fechamento do mês (verde = no ritmo
+// de bater a meta, âmbar = atenção, vermelho = abaixo do esperado) — pedido do Felipe pra
+// a barra virar o sinal de performance, e o nome carregar a identidade do squad.
 function prepararListaBarras(vendedores) {
   const diasTotais = diasNoMesAtual();
   return vendedores
@@ -368,8 +382,9 @@ function prepararListaBarras(vendedores) {
         nome: v.nome,
         squad: v.squad,
         pct: ultimo.pct,
-        corBarra: (v.squad === "FALCONS" || v.squad === "MAVERICK") ? "cor-dourado" : "cor-branco",
+        corBarra: "cor-" + statusProjecao(projecao),
         corValor: corPorProjecao(projecao),
+        corNome: (v.squad === "FALCONS" || v.squad === "MAVERICK") ? "#ffcf33" : "#eef0f3",
         avatar: avatarCache[v.nome] || "",
       };
     })
@@ -379,7 +394,7 @@ function prepararListaBarras(vendedores) {
 function barraHtml(item, idx, eixoMax) {
   const valorPct = item.pct * 100;
   const largura = Math.min(Math.max((valorPct / eixoMax) * 100, 4), 100);
-  const valorDentro = largura >= 70;
+  const valorDentro = largura >= 55;
   const pctTxt = valorPct.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%";
   const nomeEscapado = item.nome.replace(/'/g, "\\'");
   return `
@@ -387,12 +402,12 @@ function barraHtml(item, idx, eixoMax) {
       <div class="barra-rank">${idx + 1}º</div>
       <img class="barra-avatar" src="${item.avatar}" alt="">
       <div class="barra-corpo">
-        <div class="barra-nome">${item.nome}</div>
+        <div class="barra-nome" style="color:${item.corNome}">${item.nome}</div>
         <div class="barra-area">
           <div class="barra-fill ${item.corBarra}" style="width:${largura}%">
-            ${valorDentro ? `<span class="barra-valor-dentro" style="color:${item.corValor}">${pctTxt}</span>` : ""}
+            ${valorDentro ? `<span class="barra-valor-dentro">${pctTxt}</span>` : ""}
           </div>
-          ${valorDentro ? "" : `<span class="barra-valor-fora" style="color:${item.corValor}">${pctTxt}</span>`}
+          ${valorDentro ? "" : `<span class="barra-valor-fora" style="left:${largura}%; color:${item.corValor}">${pctTxt}</span>`}
         </div>
       </div>
     </div>
