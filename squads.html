@@ -456,6 +456,55 @@ function formatarLabelMensal(mesLabel) {
   return `MENSAL ${extenso}/${ano}`;
 }
 
+// ===== Dias úteis (pra projeção mensal) — confirmado pelo Felipe: resultado vendido em
+// fim de semana/feriado CONTINUA contando no faturado normalmente; só o dia em si não
+// conta como "dia útil" pro cálculo do ritmo/projeção (antes usava dia corrido, o que
+// diluía a projeção pra baixo — ex. 22/09: dia corrido dava 74,8%, dia útil dá 82,3%,
+// diferença de R$358.804). Total de dias úteis por mês vem configurado aqui porque os
+// feriados que a SeuBoné observa variam mês a mês (confirmados pelo Felipe, não deduzidos
+// só por dia da semana).
+const DIAS_UTEIS_MES = {
+  "2026-09": 21, // confirmado pelo Felipe
+  "2026-10": 21, // confirmado pelo Felipe
+  "2026-11": 20, // confirmado pelo Felipe
+  // "2026-12": ainda não confirmado pelo Felipe — cai no fallback (seg-sex sem feriado)
+  // até ele passar o número oficial.
+};
+// Feriados observados (fora de fim de semana) — usados só pra contar quantos dias úteis já
+// passaram no mês corrente. 07/09 Independência, 12/10 Nossa Sra. Aparecida, 02/11 Finados
+// (deduzidos batendo a régua acima com a contagem seg-sex; Consciência Negra em 20/11 NÃO
+// está na lista — pelas contas, a SeuBoné não fecha nesse dia).
+const FERIADOS = ["2026-09-07", "2026-10-12", "2026-11-02"];
+
+function ehFimDeSemana(data) {
+  const d = data.getDay();
+  return d === 0 || d === 6;
+}
+function ehFeriado(data) {
+  const iso = data.getFullYear() + "-" + String(data.getMonth() + 1).padStart(2, "0") + "-" + String(data.getDate()).padStart(2, "0");
+  return FERIADOS.includes(iso);
+}
+function ehDiaUtil(data) {
+  return !ehFimDeSemana(data) && !ehFeriado(data);
+}
+function diasUteisNoMes(ano, mesIndex0) {
+  const chave = ano + "-" + String(mesIndex0 + 1).padStart(2, "0");
+  if (DIAS_UTEIS_MES[chave] != null) return DIAS_UTEIS_MES[chave];
+  const ultimoDia = new Date(ano, mesIndex0 + 1, 0).getDate();
+  let total = 0;
+  for (let d = 1; d <= ultimoDia; d++) if (ehDiaUtil(new Date(ano, mesIndex0, d))) total++;
+  return total;
+}
+// Dias úteis ANTES de hoje — hoje ainda está em andamento (a venda de hoje já conta no
+// faturado, mas o dia só entra como "passado" pro ritmo a partir de amanhã).
+function diasUteisPassados(hoje) {
+  let total = 0;
+  for (let d = 1; d < hoje.getDate(); d++) {
+    if (ehDiaUtil(new Date(hoje.getFullYear(), hoje.getMonth(), d))) total++;
+  }
+  return total;
+}
+
 // Rótulo do cabeçalho troca conforme a página ativa (semanal x mensal) — preenchido no
 // render() e lido pelo mostrarPagina() a cada troca de página.
 let labelPorPagina = ["Semana comercial", "Mensal"];
@@ -484,12 +533,12 @@ function render(dados) {
   // status usa a própria % do mês contra 100% da meta mensal.
   const statusMes = statusFromRatio(pctMes);
   const barPctMes = Math.min(pctMes * 100, 100);
-  // Projeção mensal: no ritmo do dia corrido do mês, quanto deve fechar até o último dia.
-  // Mesma fórmula usada no painel individual mensal (projetarFechamento).
+  // Projeção mensal: no ritmo dos dias ÚTEIS já passados no mês, quanto deve fechar até o
+  // último dia útil. Mesma fórmula usada no painel individual mensal (projetarFechamento).
   const hoje = new Date();
-  const diaDoMes = hoje.getDate();
-  const diasNoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
-  const pctProjetadoMes = diaDoMes > 0 ? pctMes * (diasNoMes / diaDoMes) : pctMes;
+  const diasUteisTotalMes = diasUteisNoMes(hoje.getFullYear(), hoje.getMonth());
+  const diasUteisPassadosMes = diasUteisPassados(hoje);
+  const pctProjetadoMes = diasUteisPassadosMes > 0 ? pctMes * (diasUteisTotalMes / diasUteisPassadosMes) : pctMes;
   const statusProjecaoMes = statusFromRatio(pctProjetadoMes);
   const projMarkerPctMes = Math.min(pctProjetadoMes * 100, 100);
 
