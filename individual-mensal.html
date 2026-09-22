@@ -274,9 +274,47 @@ function anoMesAtual() {
   return hoje.getFullYear() + "-" + String(hoje.getMonth() + 1).padStart(2, "0");
 }
 
-function diasNoMesAtual() {
-  const hoje = new Date();
-  return new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
+// ===== Dias úteis (pra projeção de fechamento) — confirmado pelo Felipe: resultado vendido
+// em fim de semana/feriado CONTINUA contando no faturado normalmente; só o dia em si não
+// conta como "dia útil" pro cálculo do ritmo/projeção (dia corrido diluía a projeção pra
+// baixo). Mesma lógica/config do painel de squads (squads.html) — total de dias úteis por
+// mês configurado aqui porque os feriados que a SeuBoné observa variam mês a mês.
+const DIAS_UTEIS_MES = {
+  "2026-09": 21, // confirmado pelo Felipe
+  "2026-10": 21, // confirmado pelo Felipe
+  "2026-11": 20, // confirmado pelo Felipe
+  // "2026-12": ainda não confirmado pelo Felipe — cai no fallback (seg-sex sem feriado)
+  // até ele passar o número oficial.
+};
+const FERIADOS = ["2026-09-07", "2026-10-12", "2026-11-02"];
+
+function ehFimDeSemana(data) {
+  const d = data.getDay();
+  return d === 0 || d === 6;
+}
+function ehFeriado(data) {
+  const iso = data.getFullYear() + "-" + String(data.getMonth() + 1).padStart(2, "0") + "-" + String(data.getDate()).padStart(2, "0");
+  return FERIADOS.includes(iso);
+}
+function ehDiaUtil(data) {
+  return !ehFimDeSemana(data) && !ehFeriado(data);
+}
+function diasUteisNoMes(ano, mesIndex0) {
+  const chave = ano + "-" + String(mesIndex0 + 1).padStart(2, "0");
+  if (DIAS_UTEIS_MES[chave] != null) return DIAS_UTEIS_MES[chave];
+  const ultimoDia = new Date(ano, mesIndex0 + 1, 0).getDate();
+  let total = 0;
+  for (let d = 1; d <= ultimoDia; d++) if (ehDiaUtil(new Date(ano, mesIndex0, d))) total++;
+  return total;
+}
+// Dias úteis ANTES do dia informado (dia-alvo ainda "em andamento", entra do lado dos
+// restantes — mesmo critério validado com o Felipe no painel de squads).
+function diasUteisPassadosAte(ano, mesIndex0, diaAlvo) {
+  let total = 0;
+  for (let d = 1; d < diaAlvo; d++) {
+    if (ehDiaUtil(new Date(ano, mesIndex0, d))) total++;
+  }
+  return total;
 }
 
 const MESES_PT = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
@@ -318,9 +356,13 @@ function corPorProjecao(projecao) {
   if (projecao >= 0.7) return "#fbbf24";
   return "#ff6b6b";
 }
-function projetarFechamento(pctAtual, diaAtual, diasNoMes) {
-  if (!diaAtual) return pctAtual;
-  return pctAtual * (diasNoMes / diaAtual);
+// Projeção pelo RITMO DE DIAS ÚTEIS (não mais dia corrido — confirmado pelo Felipe: o
+// resultado vendido em fim de semana/feriado conta normalmente, só o dia em si não conta
+// como "dia útil" pro cálculo do ritmo). diaAtual = dia do mês do último snapshot desse
+// vendedor (pode não ser hoje, se ele não tiver dado mais recente).
+function projetarFechamento(pctAtual, diaAtual, diasUteisTotal, diasUteisPassadosAteAtual) {
+  if (!diaAtual || diasUteisPassadosAteAtual <= 0) return pctAtual;
+  return pctAtual * (diasUteisTotal / diasUteisPassadosAteAtual);
 }
 
 async function garantirAvatares(vendedores) {
@@ -374,11 +416,13 @@ function statusProjecao(projecao) {
 // número) pela PROJEÇÃO de fechamento do mês (verde = no ritmo de bater a meta, âmbar =
 // atenção, vermelho = abaixo do esperado).
 function prepararListaBarras(vendedores) {
-  const diasTotais = diasNoMesAtual();
+  const hoje = new Date();
+  const diasUteisTotal = diasUteisNoMes(hoje.getFullYear(), hoje.getMonth());
   return vendedores
     .map(v => {
       const ultimo = v.pontos.length ? v.pontos[v.pontos.length - 1] : { dia: 0, pct: 0 };
-      const projecao = projetarFechamento(ultimo.pct, ultimo.dia, diasTotais);
+      const diasUteisPassadosAteAtual = diasUteisPassadosAte(hoje.getFullYear(), hoje.getMonth(), ultimo.dia);
+      const projecao = projetarFechamento(ultimo.pct, ultimo.dia, diasUteisTotal, diasUteisPassadosAteAtual);
       return {
         nome: v.nome,
         squad: v.squad,
