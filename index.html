@@ -477,7 +477,7 @@ const CATEGORIAS_FARMERS = [
 ];
 const CATEGORIAS_RESTO = [
   { nome: "Agência + Brindeiro", membros: ["JONATHAN SILVA", "LUCAS MATHEUS"] },
-  { nome: "Revendedor", membros: ["LUCAS SANTOS"] },
+  { nome: "Revendedor", membros: ["LUCAS SANTOS", "ELENICI MACEDO"] },
   { nome: "Hunter Outbound", membros: ["ARTHUR FELIX"] }
 ];
 
@@ -669,7 +669,14 @@ function render(dados) {
   ultimoDados = dados;
   const diasUteisSemana = 5;
   const { semanaLabel, ritmoEsperado, totalMeta, totalFat } = dados;
-  const vendedores = (dados.vendedores || []).filter(v => !EXCLUDE_VENDEDORES.includes(normalizar(v.nome)));
+  // Troca de squad confirmada pelo Felipe: Lucas Santos virou GC (Revendedor) no NEXUS.
+  const SQUAD_OVERRIDE = { "LUCAS SANTOS": "NEXUS" };
+  // Troca de nome confirmada pelo Felipe: Elenice Moura passou a ser ELENICI MACEDO (Revendedor).
+  const NOME_OVERRIDE = { "ELENICE MOURA": "ELENICI MACEDO" };
+  const vendedores = (dados.vendedores || [])
+    .filter(v => !EXCLUDE_VENDEDORES.includes(normalizar(v.nome)))
+    .map(v => NOME_OVERRIDE[normalizar(v.nome)] ? { ...v, nome: NOME_OVERRIDE[normalizar(v.nome)] } : v)
+    .map(v => SQUAD_OVERRIDE[normalizar(v.nome)] ? { ...v, squad: SQUAD_OVERRIDE[normalizar(v.nome)] } : v);
   const { diaAtual, diasCompletos } = calcularDiaComercial();
   const pctAtual = totalMeta > 0 ? totalFat / totalMeta : 0;
   // Dia 1 a 4: compara contra o ritmo esperado do dia (o de ontem até as 10h — ver
