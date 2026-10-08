@@ -351,7 +351,9 @@ function parseDados(payload) {
       pct: toNum(r[3]),
       squad: String(r[8] || "").trim().toUpperCase()
     }))
-    .filter(v => !EXCLUDE_SQUADS.includes(v.squad));
+    // Elenici (antes Elenice Moura) não pode sumir se a coluna de squad dela estiver em branco
+    // na planilha — squad vazio está na lista de exclusão, e isso derrubava ela do painel.
+    .filter(v => !EXCLUDE_SQUADS.includes(v.squad) || ["ELENICE MOURA", "ELENICI MACEDO"].includes(normalizar(v.nome)));
 
   let totalMeta = 0, totalFat = 0;
   if (totalIdx >= 0) {
