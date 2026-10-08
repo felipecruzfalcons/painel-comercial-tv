@@ -177,19 +177,24 @@ const EXT_FOTOS = ["jpg", "jpeg", "png", "webp"];
 
 // Tenta carregar a foto do vendedor (cascata de extensões); se nenhuma existir, devolve null
 // (o ponto do gráfico cai pra um círculo simples com as iniciais, sem quebrar nada).
+// Foto antiga como plano B quando o vendedor trocou de nome e o arquivo ainda não foi renomeado
+// (Elenice Moura → Elenici Macedo: usa fotos/elenice-moura.* até existir fotos/elenici-macedo.*).
+const FOTO_ALIAS = { "elenici-macedo": "elenice-moura" };
 function preloadFoto(nome) {
   return new Promise((resolve) => {
     const slug = slugFoto(nome);
+    const candidatos = [];
+    [slug, FOTO_ALIAS[slug]].filter(Boolean).forEach(s => EXT_FOTOS.forEach(e => candidatos.push("fotos/" + s + "." + e)));
     let i = 0;
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => resolve(img);
     img.onerror = () => {
       i++;
-      if (i < EXT_FOTOS.length) { img.src = "fotos/" + slug + "." + EXT_FOTOS[i]; }
+      if (i < candidatos.length) { img.src = candidatos[i]; }
       else resolve(null);
     };
-    img.src = "fotos/" + slug + "." + EXT_FOTOS[0];
+    img.src = candidatos[0];
   });
 }
 // Recorta a foto num círculo com borda dourada — vira o "ponto atual" do vendedor no gráfico.
@@ -328,6 +333,15 @@ preencherLabelMes();
 // Vendedores fora do painel (mesma exclusão do painel 1).
 const EXCLUDE_VENDEDORES = ["HADYJA SARAIVA", "P MARANHAO", "P MARANHÃO", "MARCELO MOREIRA", "STEPHANIE OLIVEIRA", "YURI PINHEIRO"];
 
+// Troca de squad confirmada pelo Felipe (vale pro mês inteiro, mesmo que a planilha de
+// histórico ainda traga o squad antigo). Lucas Santos virou GC (Revendedor) no NEXUS.
+const SQUAD_OVERRIDE = { "LUCAS SANTOS": "NEXUS" };
+
+// Troca de nome confirmada pelo Felipe: Elenice Moura passou a ser ELENICI MACEDO. Vale pro
+// mês inteiro (histórico antigo na planilha ainda pode vir com o nome velho). A foto passa a
+// ser buscada como fotos/elenici-macedo.* — renomear o arquivo da foto no repositório.
+const NOME_OVERRIDE = { "ELENICE MOURA": "ELENICI MACEDO" };
+
 // Linha 0 da planilha de histórico é o cabeçalho ["Data","Vendedor","Squad","Resultado"].
 function parseHistorico(payload) {
   const mesAtual = anoMesAtual();
@@ -335,13 +349,18 @@ function parseHistorico(payload) {
   const porVendedor = {};
   rows.forEach(r => {
     const dia = extrairDia(r[0]);
-    const nome = String(r[1]).trim();
-    const squad = String(r[2] || "").trim().toUpperCase();
+    const nomeBruto = String(r[1]).trim();
+    const nome = NOME_OVERRIDE[nomeBruto.toUpperCase()] || nomeBruto;
+    const squad = SQUAD_OVERRIDE[nome.toUpperCase()] || String(r[2] || "").trim().toUpperCase();
     const pct = toNum(r[3]);
     if (!dia || !nome) return;
     if (EXCLUDE_VENDEDORES.includes(nome.toUpperCase())) return;
     if (!porVendedor[nome]) porVendedor[nome] = { nome, squad, pontos: [] };
-    porVendedor[nome].pontos.push({ dia, pct });
+    // Nome antigo + nome novo na planilha viram um vendedor só; se os dois trouxerem o mesmo
+    // dia, vale o maior % (acumulado do mês só sobe).
+    const existente = porVendedor[nome].pontos.find(p => p.dia === dia);
+    if (existente) existente.pct = Math.max(existente.pct, pct);
+    else porVendedor[nome].pontos.push({ dia, pct });
   });
   const lista = Object.values(porVendedor);
   lista.forEach(v => v.pontos.sort((a, b) => a.dia - b.dia));
