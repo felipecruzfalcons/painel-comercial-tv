@@ -287,15 +287,20 @@ function fotoAttrOnerror(idx) {
     var i = parseInt(this.dataset.tentativa, 10) + 1;
     var exts = ${extsJs};
     if (i < exts.length) { this.dataset.tentativa = i; this.src = this.dataset.base + '.' + exts[i]; }
+    else if (this.dataset.alias) { this.dataset.base = this.dataset.alias; this.dataset.alias = ''; this.dataset.tentativa = 0; this.src = this.dataset.base + '.' + exts[0]; }
     else { this.remove(); }
   "`;
 }
+// Foto antiga como plano B quando o vendedor trocou de nome e o arquivo ainda não foi renomeado
+// (Elenice Moura → Elenici Macedo: usa fotos/elenice-moura.* até existir fotos/elenici-macedo.*).
+const FOTO_ALIAS = { "elenici-macedo": "elenice-moura" };
 function avatarHtml(nome, avatarClass, baseClass) {
   const slug = slugFoto(nome);
   const base = "fotos/" + slug;
+  const aliasAttr = FOTO_ALIAS[slug] ? ` data-alias="fotos/${FOTO_ALIAS[slug]}"` : "";
   const classes = (baseClass || "avatar") + (avatarClass ? " " + avatarClass : "");
   return `<div class="${classes}">
-    <img src="${base}.${EXT_FOTOS[0]}" data-base="${base}" alt="" ${fotoAttrOnerror(0)}>
+    <img src="${base}.${EXT_FOTOS[0]}" data-base="${base}"${aliasAttr} alt="" ${fotoAttrOnerror(0)}>
     ${getInitials(nome)}
   </div>`;
 }
