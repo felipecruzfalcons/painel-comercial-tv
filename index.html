@@ -472,11 +472,11 @@ function podiumHtml(top3, avatarClass) {
 // Layout em 3 linhas: grandes (30+/50+/300+) > hunter+farmers > resto (preenche o espaço)
 const CATEGORIAS_TOPO = [
   { nome: "30+", membros: ["PAULO SERGIO", "GIOVANI AUGUSTO", "FERNANDA ARAUJO", "TAYNARA SOARES", "GABRIEL VINICIUS", "PAMELLA SANTOS"] },
-  { nome: "50+", membros: ["EMILY DANTAS", "CAMILLA MARINHO", "JAILTON", "CAIO TARGINO", "IGOR NEVES", "VICTOR BRITO", "ALEXSANDRA WHENDELL", "SABRINA SILVA"] },
-  { nome: "300+", membros: ["EMANUEL PEREIRA"] }
+  { nome: "50+", membros: ["EMILY DANTAS", "JAILTON", "CAIO TARGINO", "IGOR NEVES", "VICTOR BRITO", "ALEXSANDRA WHENDELL", "SABRINA SILVA"] },
+  { nome: "300+", membros: ["EMANUEL PEREIRA", "CAMILLA MARINHO"] }
 ];
 const CATEGORIAS_FARMERS = [
-  { nome: "Cliente Final Pequeno - Funcionário", membros: ["ANDERSON CARLOS", "ANA BEATRIZ", "VICTOR CLEMERSON"] },
+  { nome: "Cliente Final Pequeno - Funcionário", membros: ["ANDERSON CARLOS", "ANA BEATRIZ", "VICTOR CLEMERSON", "ARTHUR FELIX"] },
   { nome: "Cliente Final Pequeno - Sócio", membros: ["GUILHERME MATIAS", "CLEYTON ANDRADE", "AMANDA ALVES", "KEROLLY FONSECA"] },
   { nome: "Cliente Final Grande - Funcionário", membros: ["WALTER GALDINO", "ANDERSON GABRIEL"] },
   { nome: "Cliente Final Grande - Sócio", membros: ["VICTOR VARELA", "LUIZ CAVALCANTE"] }
@@ -486,8 +486,7 @@ const CATEGORIAS_FARMERS = [
 const CATEGORIAS_RESTO = [
   { nome: "Agência + Brindeiro", membros: ["JONATHAN SILVA", "LUCAS MATHEUS"] },
   { nome: "Hunter Reativação", membros: ["VICTOR MEDEIROS", "JOÃO GABRIEL SOARES"] },
-  { nome: "Revendedor", membros: ["LUCAS SANTOS"] },
-  { nome: "Hunter Outbound", membros: ["ARTHUR FELIX"] }
+  { nome: "Revendedor", membros: ["LUCAS SANTOS"] }
 ];
 
 function normalizar(s) {
