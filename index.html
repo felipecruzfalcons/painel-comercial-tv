@@ -677,8 +677,9 @@ function render(dados) {
   ultimoDados = dados;
   const diasUteisSemana = 5;
   const { semanaLabel, ritmoEsperado, totalMeta, totalFat } = dados;
-  // Troca de squad confirmada pelo Felipe: Lucas Santos virou GC (Revendedor) no NEXUS.
-  const SQUAD_OVERRIDE = { "LUCAS SANTOS": "NEXUS" };
+  // Troca de squad confirmada pelo Felipe: Lucas Santos virou GC (Revendedor) no NEXUS; Victor Varela
+  // deixou de ser Closer e passou pro MAVERICK (GC).
+  const SQUAD_OVERRIDE = { "LUCAS SANTOS": "NEXUS", "VICTOR VARELA": "MAVERICK" };
   // Troca de nome confirmada pelo Felipe: Elenice Moura passou a ser ELENICI MACEDO (Revendedor).
   const NOME_OVERRIDE = { "ELENICE MOURA": "ELENICI MACEDO" };
   const vendedores = (dados.vendedores || [])
