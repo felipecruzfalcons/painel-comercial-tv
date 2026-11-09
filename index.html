@@ -471,20 +471,22 @@ function podiumHtml(top3, avatarClass) {
 // ===== Perfis de venda (categorias definidas pelo Felipe, independentes de squad) =====
 // Layout em 3 linhas: grandes (30+/50+/300+) > hunter+farmers > resto (preenche o espaço)
 const CATEGORIAS_TOPO = [
-  { nome: "30+", membros: ["PAULO SERGIO", "VICTOR VARELA", "GIOVANI AUGUSTO", "FERNANDA ARAUJO"] },
-  { nome: "50+", membros: ["EMILY DANTAS", "CAMILLA MARINHO", "JAILTON", "CAIO TARGINO", "IGOR NEVES", "VICTOR BRITO", "ALEXSANDRA WHENDELL"] },
-  { nome: "Hunter Reativação", membros: ["TAYNARA SOARES", "VICTOR MEDEIROS", "GABRIEL VINICIUS", "JOÃO GABRIEL SOARES"] },
-  { nome: "300+", membros: ["SABRINA SILVA", "EMANUEL PEREIRA"] }
+  { nome: "30+", membros: ["PAULO SERGIO", "GIOVANI AUGUSTO", "FERNANDA ARAUJO", "TAYNARA SOARES", "GABRIEL VINICIUS", "PAMELLA SANTOS"] },
+  { nome: "50+", membros: ["EMILY DANTAS", "CAMILLA MARINHO", "JAILTON", "CAIO TARGINO", "IGOR NEVES", "VICTOR BRITO", "ALEXSANDRA WHENDELL", "SABRINA SILVA"] },
+  { nome: "300+", membros: ["EMANUEL PEREIRA"] }
 ];
 const CATEGORIAS_FARMERS = [
-  { nome: "Cliente Final Pequeno - Funcionário", membros: ["ANDERSON CARLOS", "MARCELO MOREIRA", "ANA BEATRIZ", "VICTOR CLEMERSON"] },
-  { nome: "Cliente Final Pequeno - Sócio", membros: ["GUILHERME MATIAS", "CLEYTON ANDRADE", "AMANDA ALVES", "STEPHANIE OLIVEIRA"] },
+  { nome: "Cliente Final Pequeno - Funcionário", membros: ["ANDERSON CARLOS", "ANA BEATRIZ", "VICTOR CLEMERSON"] },
+  { nome: "Cliente Final Pequeno - Sócio", membros: ["GUILHERME MATIAS", "CLEYTON ANDRADE", "AMANDA ALVES", "KEROLLY FONSECA"] },
   { nome: "Cliente Final Grande - Funcionário", membros: ["WALTER GALDINO", "ANDERSON GABRIEL"] },
-  { nome: "Cliente Final Grande - Sócio", membros: ["VINICIUS BARROS", "LUIZ CAVALCANTE"] }
+  { nome: "Cliente Final Grande - Sócio", membros: ["VICTOR VARELA", "LUIZ CAVALCANTE"] }
 ];
+// Hunter Reativação saiu da página dos Closers (30+/50+/300+) e agora fica nesta página, junto dos
+// GCs (mudança pedida pelo Felipe em nov/2026).
 const CATEGORIAS_RESTO = [
   { nome: "Agência + Brindeiro", membros: ["JONATHAN SILVA", "LUCAS MATHEUS"] },
-  { nome: "Revendedor", membros: ["LUCAS SANTOS", "ELENICI MACEDO"] },
+  { nome: "Hunter Reativação", membros: ["VICTOR MEDEIROS", "JOÃO GABRIEL SOARES"] },
+  { nome: "Revendedor", membros: ["LUCAS SANTOS"] },
   { nome: "Hunter Outbound", membros: ["ARTHUR FELIX"] }
 ];
 
@@ -618,7 +620,7 @@ function desenharGrafico(canvasId, chartRefSetter, chartRefAtual, vendedores, ri
 }
 
 // Consultores que saíram/não devem aparecer em nenhum ranking ou gráfico do painel.
-const EXCLUDE_VENDEDORES = ["HADYJA SARAIVA", "P MARANHAO", "P MARANHÃO", "MARCELO MOREIRA", "STEPHANIE OLIVEIRA", "YURI PINHEIRO"];
+const EXCLUDE_VENDEDORES = ["HADYJA SARAIVA", "P MARANHAO", "P MARANHÃO", "MARCELO MOREIRA", "STEPHANIE OLIVEIRA", "YURI PINHEIRO", "VINICIUS BARROS", "ELENICI MACEDO", "ELENICE MOURA"];
 
 // Diferença em dias de calendário entre duas datas "AAAA-MM-DD".
 function diasEntre(dataStrA, dataStrB) {
@@ -896,8 +898,8 @@ async function carregarDados() {
 }
 
 // ===== Paginação por fade: 4 páginas fixas, cada uma com seu próprio tempo de exibição =====
-// Página 1 (índice 0) = topo + Top Closer/Top GC · Página 2 (índice 1) = sub cards 30+/50+/300+/Hunter Reativação ·
-// Página 3 (índice 2) = sub cards Farmers + Agência/Revendedor/Brindeiro/Hunter Outbound ·
+// Página 1 (índice 0) = topo + Top Closer/Top GC · Página 2 (índice 1) = sub cards 30+/50+/300+ ·
+// Página 3 (índice 2) = sub cards Farmers + Agência/Hunter Reativação/Revendedor/Hunter Outbound ·
 // Página 4 (índice 3) = os dois gráficos individuais.
 // Nunca rola: cada página ocupa a tela inteira e a troca é um fade suave.
 const DURACOES_PAGINA_MS = [15000, 25000, 35000, 20000]; // tempo de exibição de cada página, nessa ordem
