@@ -218,12 +218,12 @@
   /* Rótulo da projeção: ancorado pela direita quando o marcador está perto da borda
      (antes o translateX(-50%) jogava metade do texto pra fora do card e cortava). */
   .pagina[data-pagina="1"] .bar-marker-label--dir { transform:translateX(-100%); }
-  .pagina[data-pagina="1"] .bar-marker-label { color:var(--texto) !important; }
+  .pagina[data-pagina="1"] .bar-marker-label .proj-nome { color:var(--texto); }
   .pagina .corrida-bar.cor-1 { background:linear-gradient(180deg,#19C25B 0%,#00A63E 55%,#008C35 100%); }
   .pagina .corrida-bar.cor-2 { background:linear-gradient(180deg,#FFA21F 0%,#FF8A00 55%,#EE7600 100%); }
   .pagina[data-pagina="1"] .corrida--mensal .corrida-bar-area { height:78px; }
   .pagina .corrida-bar { color:#000; }
-  .pagina .corrida:not(.corrida--mensal) .corrida-bar-nome { font-size:80px; line-height:1; text-shadow:none; color:#000; }
+  .pagina .corrida:not(.corrida--mensal) .corrida-bar-nome { font-size:56px; line-height:1; text-shadow:none; color:#000; }
   .pagina .corrida--mensal .corrida-bar-nome { font-size:58px; line-height:1; text-shadow:none; color:#000; }
   .pagina .corrida-bar-valor { color:var(--texto); }
   .pagina .corrida-bar-valor-dentro { color:#0b0b0b; text-shadow:none; }
@@ -592,7 +592,7 @@ function render(dados) {
           <div class="bar-wrap">
             <div class="bar-fill" style="width:${barPctMes}%; background:var(--${statusMes})"></div>
             <div class="bar-marker" style="left:${projMarkerPctMes}%; background:var(--${statusProjecaoMes})"></div>
-            <div class="bar-marker-label${projMarkerPctMes > 60 ? " bar-marker-label--dir" : ""}" style="left:${projMarkerPctMes}%; color:var(--${statusProjecaoMes})">Projeção Mensal ${fmtPct(pctProjetadoMes)}</div>
+            <div class="bar-marker-label${projMarkerPctMes > 60 ? " bar-marker-label--dir" : ""}" style="left:${projMarkerPctMes}%; color:var(--${statusProjecaoMes})"><span class="proj-nome">Projeção Mensal</span> ${fmtPct(pctProjetadoMes)}</div>
           </div>
           <div class="bar-legend"><span>0%</span><span>100% da meta mensal</span></div>
         </div>
