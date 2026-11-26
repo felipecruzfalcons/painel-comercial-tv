@@ -243,6 +243,9 @@
   .pagina[data-pagina="1"] .corrida--mensal .corrida-bar-nome { font-size:clamp(58px, 8vh, 110px); }
   .pagina .corrida-bar-valor { color:var(--texto); }
   .pagina .corrida-bar-valor-dentro { color:#0b0b0b; text-shadow:none; }
+  /* % dentro da barra (líder disparado) no MESMO tamanho/estilo do % fora da barra. */
+  .pagina .corrida--mensal .corrida-bar-valor-dentro { font-size:44px; font-style:normal; font-weight:800; right:22px; }
+  .pagina .corrida:not(.corrida--mensal) .corrida-bar-valor-dentro { font-size:38px; font-style:normal; font-weight:800; }
   .link-outro-painel {
     margin-top: 8px;
     display: inline-block;
