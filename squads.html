@@ -202,6 +202,31 @@
   .corrida--mensal .corrida-bar-valor-dentro { right:16px; font-size:33px; }
   .corrida--mensal .corrida-eixo { margin-top:6px; font-size:13px; }
   .corrida--mensal .corrida-eixo-wrap { margin-left:116px; }
+
+  /* ===== Visual "startup" — nas páginas SEMANAL e MENSAL (corridas); hero/régua/relevo só na mensal, aprovado pelo Felipe na
+     simulação (feedback da diretoria): cores chapadas e fortes (sem degradê), cards em relevo,
+     % em preto (exceto o card principal), 1º verde forte / 2º laranja, nome do squad ocupando
+     a altura da barra e rótulo "Projeção Mensal" sem corte. Régua (chips) mantida como era. */
+  .pagina[data-pagina="0"], .pagina[data-pagina="1"] { --ambar:#FF5A00; --verde:#00A63E; --vermelho:#E5173F; }
+  .pagina[data-pagina="1"] .hero.card,
+  .pagina[data-pagina="1"] .ladder.card {
+    border:1px solid rgba(11,18,48,.18);
+    box-shadow:0 6px 0 rgba(11,18,48,.16), 0 18px 34px rgba(11,18,48,.22);
+  }
+  .pagina[data-pagina="1"] .bar-fill { box-shadow:0 4px 0 rgba(0,0,0,.28), 0 8px 14px rgba(0,0,0,.25); }
+  .pagina[data-pagina="1"] .hero-num { font-weight:900; }
+  /* Rótulo da projeção: ancorado pela direita quando o marcador está perto da borda
+     (antes o translateX(-50%) jogava metade do texto pra fora do card e cortava). */
+  .pagina[data-pagina="1"] .bar-marker-label--dir { transform:translateX(-100%); }
+  .pagina[data-pagina="1"] .bar-marker-label { color:var(--texto) !important; }
+  .pagina .corrida-bar.cor-1 { background:linear-gradient(180deg,#19C25B 0%,#00A63E 55%,#008C35 100%); }
+  .pagina .corrida-bar.cor-2 { background:linear-gradient(180deg,#FFA21F 0%,#FF8A00 55%,#EE7600 100%); }
+  .pagina[data-pagina="1"] .corrida--mensal .corrida-bar-area { height:78px; }
+  .pagina .corrida-bar { color:#000; }
+  .pagina .corrida:not(.corrida--mensal) .corrida-bar-nome { font-size:80px; line-height:1; text-shadow:none; color:#000; }
+  .pagina .corrida--mensal .corrida-bar-nome { font-size:58px; line-height:1; text-shadow:none; color:#000; }
+  .pagina .corrida-bar-valor { color:var(--texto); }
+  .pagina .corrida-bar-valor-dentro { color:#0b0b0b; text-shadow:none; }
   .link-outro-painel {
     margin-top: 8px;
     display: inline-block;
@@ -567,7 +592,7 @@ function render(dados) {
           <div class="bar-wrap">
             <div class="bar-fill" style="width:${barPctMes}%; background:var(--${statusMes})"></div>
             <div class="bar-marker" style="left:${projMarkerPctMes}%; background:var(--${statusProjecaoMes})"></div>
-            <div class="bar-marker-label" style="left:${projMarkerPctMes}%; color:var(--${statusProjecaoMes})">Projeção Mensal ${fmtPct(pctProjetadoMes)}</div>
+            <div class="bar-marker-label${projMarkerPctMes > 60 ? " bar-marker-label--dir" : ""}" style="left:${projMarkerPctMes}%; color:var(--${statusProjecaoMes})">Projeção Mensal ${fmtPct(pctProjetadoMes)}</div>
           </div>
           <div class="bar-legend"><span>0%</span><span>100% da meta mensal</span></div>
         </div>
